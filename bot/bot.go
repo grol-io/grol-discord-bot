@@ -13,20 +13,21 @@ var BotToken string
 
 func Run() {
 	// create a session
-	discord, err := discordgo.New("Bot " + BotToken)
+	session, err := discordgo.New("Bot " + BotToken)
+	session.StateEnabled = true
 	if err != nil {
 		log.Fatalf("Init discordgo.New error: %v", err)
 	}
 
 	// add a event handler
-	discord.AddHandler(newMessage)
+	session.AddHandler(newMessage)
 
 	// open session
-	err = discord.Open()
+	err = session.Open()
 	if err != nil {
 		log.Fatalf("Init discordgo.Open error: %v", err)
 	}
-	defer discord.Close() // close session, after function termination
+	defer session.Close() // close session, after function termination
 
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
@@ -50,7 +51,7 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	} else {
 		channelName = channel.Name
 	}
-	server, err := session.State.Guild(channel.GuildID)
+	server, err := session.State.Guild(message.GuildID)
 	var serverName string
 	if err != nil {
 		log.S(log.Error, "unable to get server info", log.Any("err", err))
@@ -68,7 +69,10 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if !strings.HasPrefix(message.Content, "!grol") {
 		return
 	}
-
+	if message.Author.Bot {
+		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
+		return
+	}
 	res := repl.EvalString(message.Content[5:])
 	log.S(log.Info, "response", log.String("response", res))
 	_, err = session.ChannelMessageSend(message.ChannelID, "`"+res+"`")
