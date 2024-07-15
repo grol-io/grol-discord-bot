@@ -1,6 +1,7 @@
 # grol-discord-bot
 Discord bot offering grol
 
+![screenshot](screenshot.png)
 
 Invite link (add grol bot to your server):
 
