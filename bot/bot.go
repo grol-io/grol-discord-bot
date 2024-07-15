@@ -41,9 +41,19 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	res := repl.EvalString(message.Content)
-	log.S(log.Info, "response", log.String("response", res))
-	_, err := session.ChannelMessageSend(message.ChannelID, "`"+res+"`")
+	evalAndReply(session, "dm-reply", message.ChannelID, message.Content)
+}
+
+func evalAndReply(session *discordgo.Session, info, channelID, input string) {
+	// TODO: stdout vs stderr vs result.
+	res := repl.EvalString(input)
+	log.S(log.Info, info, log.String("response", res))
+	reply(session, channelID, res)
+}
+
+func reply(session *discordgo.Session, channelID, response string) {
+	// TODO: Maybe better quoting.
+	_, err := session.ChannelMessageSend(channelID, "`"+response+"`")
 	if err != nil {
 		log.S(log.Error, "error", log.Any("err", err))
 	}
@@ -94,10 +104,5 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	res := repl.EvalString(message.Content[5:])
-	log.S(log.Info, "response", log.String("response", res))
-	_, err = session.ChannelMessageSend(message.ChannelID, "`"+res+"`")
-	if err != nil {
-		log.S(log.Error, "error", log.Any("err", err))
-	}
+	evalAndReply(session, "channel-response", message.ChannelID, message.Content[5:])
 }
