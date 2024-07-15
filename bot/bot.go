@@ -11,24 +11,21 @@ import (
 
 var BotToken string
 
-func checkNilErr(e error) { // TODO: replace by less brutal error handling
-	if e != nil {
-		log.Fatalf("Error: %v", e)
-	}
-}
-
 func Run() {
-
 	// create a session
 	discord, err := discordgo.New("Bot " + BotToken)
-	checkNilErr(err)
+	if err != nil {
+		log.Fatalf("Init discordgo.New error: %v", err)
+	}
 
 	// add a event handler
 	discord.AddHandler(newMessage)
 
 	// open session
 	err = discord.Open()
-	checkNilErr(err)
+	if err != nil {
+		log.Fatalf("Init discordgo.Open error: %v", err)
+	}
 	defer discord.Close() // close session, after function termination
 
 	// keep bot running until there is NO os interruption (ctrl + C)
@@ -44,15 +41,28 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.Author.ID == session.State.User.ID {
 		return
 	}
+	// Is this cached/efficient to keep doing?
 	channel, err := session.State.Channel(message.ChannelID)
-	checkNilErr(err)
+	var channelName string
+	if err != nil {
+		log.S(log.Error, "unable to get channel info", log.Any("err", err))
+		channelName = "unknown"
+	} else {
+		channelName = channel.Name
+	}
 	server, err := session.State.Guild(channel.GuildID)
-	checkNilErr(err)
+	var serverName string
+	if err != nil {
+		log.S(log.Error, "unable to get server info", log.Any("err", err))
+		serverName = "unknown"
+	} else {
+		serverName = server.Name
+	}
 	log.S(log.Debug, "channel", log.Any("channel", channel))
 	log.S(log.Info, "message",
 		log.Any("from", message.Author.Username),
-		log.Any("server", server.Name),
-		log.Any("channel", channel.Name),
+		log.Any("server", serverName),
+		log.Any("channel", channelName),
 		log.Any("content", message.Content))
 
 	if !strings.HasPrefix(message.Content, "!grol") {
