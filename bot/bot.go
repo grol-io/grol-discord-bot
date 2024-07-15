@@ -33,6 +33,22 @@ func Run() {
 	scli.UntilInterrupted()
 }
 
+func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
+	log.S(log.Info, "direct-message",
+		log.Any("from", message.Author.Username),
+		log.Any("content", message.Content))
+	if message.Author.Bot {
+		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
+		return
+	}
+	res := repl.EvalString(message.Content)
+	log.S(log.Info, "response", log.String("response", res))
+	_, err := session.ChannelMessageSend(message.ChannelID, "`"+res+"`")
+	if err != nil {
+		log.S(log.Error, "error", log.Any("err", err))
+	}
+}
+
 func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	/* prevent bot responding to its own message
 	this is achieved by looking into the message author id
@@ -40,6 +56,11 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	*/
 	log.S(log.Debug, "message", log.Any("message", message))
 	if message.Author.ID == session.State.User.ID {
+		return
+	}
+	isDM := message.GuildID == ""
+	if isDM {
+		handleDM(session, message)
 		return
 	}
 	// Is this cached/efficient to keep doing?
@@ -60,7 +81,7 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		serverName = server.Name
 	}
 	log.S(log.Debug, "channel", log.Any("channel", channel))
-	log.S(log.Info, "message",
+	log.S(log.Info, "channel-message",
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
