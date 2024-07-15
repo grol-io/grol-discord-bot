@@ -3,8 +3,10 @@ package bot
 import (
 	"strings"
 
+	"fortio.org/cli"
 	"fortio.org/log"
 	"fortio.org/scli"
+	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol/repl"
 )
@@ -41,19 +43,54 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	evalAndReply(session, "dm-reply", message.ChannelID, message.Content)
+	what := message.Content
+	if strings.HasPrefix(message.Content, "!grol") {
+		what = what[5:]
+	}
+	evalAndReply(session, "dm-reply", message.ChannelID, what)
+}
+
+var growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
+
+func removeTripleBackticks(s string) string {
+	s = strings.TrimPrefix(s, "```grol")
+	s = strings.TrimPrefix(s, "```go")
+	s = strings.TrimPrefix(s, "```")
+	s = strings.TrimSuffix(s, "```")
+	return s
 }
 
 func evalAndReply(session *discordgo.Session, info, channelID, input string) {
-	// TODO: stdout vs stderr vs result.
-	res := repl.EvalString(input)
+	var res string
+	input = strings.TrimSpace(input)
+	switch input {
+	case "":
+		fallthrough
+	case "info":
+		fallthrough
+	case "help":
+		res = "Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
+			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go.\n\n" +
+			"also supported `!grol version`, `!grol source`, `!grol buildinfo`"
+	case "source":
+		res = "[github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
+			" and [grol-io](<https://grol.io>)"
+	case "version":
+		res = "Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion + ")"
+	case "buildinfo":
+		res = "```" + cli.FullVersion + "```"
+	default:
+		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
+		// TODO: Maybe better quoting.
+		input = removeTripleBackticks(input)
+		res = "```go\n" + repl.EvalString(input) + "\n```"
+	}
 	log.S(log.Info, info, log.String("response", res))
 	reply(session, channelID, res)
 }
 
 func reply(session *discordgo.Session, channelID, response string) {
-	// TODO: Maybe better quoting.
-	_, err := session.ChannelMessageSend(channelID, "`"+response+"`")
+	_, err := session.ChannelMessageSend(channelID, response)
 	if err != nil {
 		log.S(log.Error, "error", log.Any("err", err))
 	}
@@ -90,16 +127,14 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	} else {
 		serverName = server.Name
 	}
-	log.S(log.Debug, "channel", log.Any("channel", channel))
+	if !strings.HasPrefix(message.Content, "!grol") {
+		return
+	}
 	log.S(log.Info, "channel-message",
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
 		log.Any("content", message.Content))
-
-	if !strings.HasPrefix(message.Content, "!grol") {
-		return
-	}
 	if message.Author.Bot {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
