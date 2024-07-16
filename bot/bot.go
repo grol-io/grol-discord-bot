@@ -43,10 +43,7 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	what := message.Content
-	if strings.HasPrefix(message.Content, "!grol") {
-		what = what[5:]
-	}
+	what := strings.TrimPrefix(message.Content, "!grol")
 	evalAndReply(session, "dm-reply", message.ChannelID, what)
 }
 
@@ -62,23 +59,25 @@ func removeTripleBackticks(s string) string {
 
 func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 	var res string
-	input = strings.TrimSpace(input)
+	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
 	case "":
 		fallthrough
 	case "info":
 		fallthrough
 	case "help":
-		res = "Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
-			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go.\n\n" +
+		res = "💡 Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
+			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without :=).\n\n" +
 			"also supported `!grol version`, `!grol source`, `!grol buildinfo`"
 	case "source":
-		res = "[github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
+		res = "📄 [github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
 			" and [grol-io](<https://grol.io>)"
 	case "version":
-		res = "Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion + ")"
+		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion
 	case "buildinfo":
-		res = "```" + cli.FullVersion + "```"
+		res = "📦ℹ️```" + cli.FullVersion + "```"
+	case "bug":
+		res = "🐞 Please report any issue or suggestion at [github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		// TODO: Maybe better quoting.
@@ -116,6 +115,7 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		return
 	}
 	isDM := message.GuildID == ""
+	message.Content = strings.TrimSpace(message.Content)
 	if isDM {
 		handleDM(session, message)
 		return
