@@ -43,8 +43,7 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	what := message.Content
-	what = strings.TrimPrefix(what, "!grol")
+	what := strings.TrimPrefix(message.Content, "!grol")
 	evalAndReply(session, "dm-reply", message.ChannelID, what)
 }
 
@@ -114,6 +113,7 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		return
 	}
 	isDM := message.GuildID == ""
+	message.Content = strings.TrimSpace(message.Content)
 	if isDM {
 		handleDM(session, message)
 		return
@@ -135,15 +135,14 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	} else {
 		serverName = server.Name
 	}
-	what := strings.TrimSpace(message.Content)
-	if !strings.HasPrefix(what, "!grol") {
+	if !strings.HasPrefix(message.Content, "!grol") {
 		return
 	}
 	log.S(log.Info, "channel-message",
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
-		log.Any("content", what))
+		log.Any("content", message.Content))
 	if message.Author.Bot {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
