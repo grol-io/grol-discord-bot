@@ -44,9 +44,7 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		return
 	}
 	what := message.Content
-	if strings.HasPrefix(message.Content, "!grol") {
-		what = what[5:]
-	}
+	what = strings.TrimPrefix(what, "!grol")
 	evalAndReply(session, "dm-reply", message.ChannelID, what)
 }
 
@@ -62,7 +60,7 @@ func removeTripleBackticks(s string) string {
 
 func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 	var res string
-	input = strings.TrimSpace(input)
+	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
 	case "":
 		fallthrough
@@ -70,13 +68,13 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 		fallthrough
 	case "help":
 		res = "Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
-			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go.\n\n" +
+			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without :=).\n\n" +
 			"also supported `!grol version`, `!grol source`, `!grol buildinfo`"
 	case "source":
 		res = "[github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
 			" and [grol-io](<https://grol.io>)"
 	case "version":
-		res = "Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion + ")"
+		res = "Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion
 	case "buildinfo":
 		res = "```" + cli.FullVersion + "```"
 	default:
@@ -137,14 +135,15 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	} else {
 		serverName = server.Name
 	}
-	if !strings.HasPrefix(message.Content, "!grol") {
+	what := strings.TrimSpace(message.Content)
+	if !strings.HasPrefix(what, "!grol") {
 		return
 	}
 	log.S(log.Info, "channel-message",
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
-		log.Any("content", message.Content))
+		log.Any("content", what))
 	if message.Author.Bot {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
