@@ -83,7 +83,17 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		// TODO: Maybe better quoting.
 		input = removeTripleBackticks(input)
-		res = "```go\n" + repl.EvalString(input) + "\n```"
+		var errs []string
+		res, errs = repl.EvalString(input)
+		if len(errs) > 0 {
+			res = "```diff"
+			for _, e := range errs {
+				res += "\n- " + e
+			}
+			res += "\n```"
+		} else {
+			res = "```go\n" + res + "\n```"
+		}
 	}
 	log.S(log.Info, info, log.String("response", res))
 	reply(session, channelID, res)
