@@ -1,4 +1,4 @@
-package bot
+package main
 
 import (
 	"strings"
@@ -8,15 +8,16 @@ import (
 	"fortio.org/scli"
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
+	"grol.io/grol-discord-bot/fixedmap"
 	"grol.io/grol/repl"
 )
 
 var BotToken string
 
-var msgSet *FixedMap[string, string]
+var msgSet *fixedmap.FixedMap[string, string]
 
 func Run(maxHistoryLength int) {
-	msgSet = NewFixedMap[string, string](maxHistoryLength)
+	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
 	session.StateEnabled = true
@@ -49,7 +50,15 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	}
 	what := strings.TrimPrefix(message.Content, "!grol")
 	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID)
-	msgSet.Add(message.ID, replyID)
+	node, isNew := msgSet.Add(message.ID, replyID)
+	msg := "Updated message in history"
+	if isNew {
+		msg = "Added new message to history"
+	}
+	log.S(log.Info, msg, log.Any("msgID", message.ID), log.Any("replyID", replyID))
+	if node != nil {
+		log.S(log.Info, "Evicted message from history", log.Any("msgID", node.Key), log.Any("replyID", node.Value))
+	}
 }
 
 var growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
@@ -83,7 +92,8 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string, rep
 	case "buildinfo":
 		res = "📦ℹ️```" + cli.FullVersion + "```"
 	case "bug":
-		res = "🐞 Please report any issue or suggestion at [github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
+		res = "🐞 Please report any issue or suggestion at " +
+			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		// TODO: Maybe better quoting.
@@ -181,6 +191,9 @@ func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate)
 		log.S(log.Debug, "message not handled before", log.Any("id", message.ID))
 		return
 	}
-	log.S(log.Info, "message edit detected", log.Any("id", message.ID), log.Any("reply", reply), log.String("new-content", message.Content))
+	log.S(log.Info, "message edit detected",
+		log.Any("id", message.ID),
+		log.Any("reply", reply),
+		log.String("new-content", message.Content))
 	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
 }

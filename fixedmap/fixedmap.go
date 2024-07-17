@@ -1,10 +1,8 @@
-package bot
+package fixedmap
 
 import (
 	"sync"
 	"time"
-
-	"fortio.org/log"
 )
 
 // Double Linked list node.
@@ -25,7 +23,7 @@ type FixedMap[K comparable, V any] struct {
 	lock sync.Mutex
 }
 
-// NewFixedMap initializes a new FixedMap with a given maximum size
+// NewFixedMap initializes a new FixedMap with a given maximum size.
 func NewFixedMap[K comparable, V any](max int) *FixedMap[K, V] {
 	if max < 2 {
 		panic("max must be at least 2")
@@ -37,13 +35,14 @@ func NewFixedMap[K comparable, V any](max int) *FixedMap[K, V] {
 }
 
 // Add adds a new key to the FixedMap, evicting the least recently used if necessary
-func (fs *FixedMap[K, V]) Add(key K, value V) {
+// Returns the evicted node and a boolean indicating if the key was new.
+func (fs *FixedMap[K, V]) Add(key K, value V) (*Node[K, V], bool) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 
 	if node, exists := fs.Map[key]; exists {
 		fs.moveToHead(node)
-		return
+		return nil, false
 	}
 	// Create a new node
 	node := &Node[K, V]{
@@ -55,11 +54,12 @@ func (fs *FixedMap[K, V]) Add(key K, value V) {
 	fs.addToFront(node)
 	// Check if we need to evict
 	if len(fs.Map) > fs.Max {
-		fs.evict()
+		return fs.evict(), true
 	}
+	return nil, true
 }
 
-// Get retrieves a key from the FixedMap and updates its position
+// Get retrieves a key from the FixedMap and updates its position.
 func (fs *FixedMap[K, V]) Get(key K) (v V, found bool) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
@@ -72,7 +72,6 @@ func (fs *FixedMap[K, V]) Get(key K) (v V, found bool) {
 
 func (fs *FixedMap[K, V]) addToFront(node *Node[K, V]) {
 	node.LastUsed = time.Now()
-	log.Infof("Adding key %v val %v", node.Key, node.Value)
 	if fs.Head == nil { // first add ever
 		fs.Head = node
 		fs.Tail = node
@@ -88,7 +87,7 @@ func (fs *FixedMap[K, V]) setNodeToHead(node *Node[K, V]) {
 }
 
 // moveToHead moves a given node to the head of the list
-// and updates the LastUsed time
+// and updates the LastUsed time.
 func (fs *FixedMap[K, V]) moveToHead(node *Node[K, V]) {
 	node.LastUsed = time.Now()
 	if fs.Head == node {
@@ -108,16 +107,18 @@ func (fs *FixedMap[K, V]) moveToHead(node *Node[K, V]) {
 	fs.setNodeToHead(node)
 }
 
-// evict removes the least recently used (tail) node from the list and map
-func (fs *FixedMap[K, V]) evict() {
+// evict removes the least recently used (tail) node from the list and map.
+func (fs *FixedMap[K, V]) evict() *Node[K, V] {
 	if fs.Tail == nil {
 		panic("evict called on empty list")
 	}
 	evictedNode := fs.Tail
-	log.Infof("Evicting key %v val %v", evictedNode.Key, evictedNode.Value)
 	fs.Tail = evictedNode.Prev
 	if fs.Tail != nil {
 		fs.Tail.Next = nil
 	}
 	delete(fs.Map, evictedNode.Key)
+	evictedNode.Next = nil // don't leak
+	evictedNode.Prev = nil
+	return evictedNode
 }

@@ -1,4 +1,4 @@
-package bot
+package fixedmap
 
 import (
 	"testing"
