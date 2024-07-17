@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 
 	"fortio.org/log"
@@ -9,10 +10,11 @@ import (
 )
 
 func main() {
+	num := flag.Int("n", 100, "Maximum number of messages to keep in memory for possible edit")
 	scli.ServerMain()
 	bot.BotToken = os.Getenv("DISCORD_BOT_TOKEN")
 	if bot.BotToken == "" {
 		log.Fatalf("DISCORD_BOT_TOKEN must be set")
 	}
-	bot.Run() // call the run function of bot/bot.go
+	bot.Run(*num)
 }

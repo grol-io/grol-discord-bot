@@ -13,7 +13,10 @@ import (
 
 var BotToken string
 
-func Run() {
+var msgSet *FixedMap[string, string]
+
+func Run(maxHistoryLength int) {
+	msgSet = NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
 	session.StateEnabled = true
@@ -21,8 +24,9 @@ func Run() {
 		log.Fatalf("Init discordgo.New error: %v", err)
 	}
 
-	// add a event handler
+	// add event handlers
 	session.AddHandler(newMessage)
+	session.AddHandler(updateMessage)
 
 	// open session
 	err = session.Open()
@@ -44,7 +48,8 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		return
 	}
 	what := strings.TrimPrefix(message.Content, "!grol")
-	evalAndReply(session, "dm-reply", message.ChannelID, what)
+	replyID := evalAndReply(session, "dm-reply", message.ChannelID, what)
+	msgSet.Add(message.ID, replyID)
 }
 
 var growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
@@ -57,7 +62,8 @@ func removeTripleBackticks(s string) string {
 	return s
 }
 
-func evalAndReply(session *discordgo.Session, info, channelID, input string) {
+// returns the id of the reply.
+func evalAndReply(session *discordgo.Session, info, channelID, input string) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -95,14 +101,15 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 		}
 	}
 	log.S(log.Info, info, log.String("response", res))
-	reply(session, channelID, res)
+	return reply(session, channelID, res)
 }
 
-func reply(session *discordgo.Session, channelID, response string) {
-	_, err := session.ChannelMessageSend(channelID, response)
+func reply(session *discordgo.Session, channelID, response string) string {
+	reply, err := session.ChannelMessageSend(channelID, response)
 	if err != nil {
 		log.S(log.Error, "error", log.Any("err", err))
 	}
+	return reply.ID
 }
 
 func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
@@ -149,5 +156,19 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	evalAndReply(session, "channel-response", message.ChannelID, message.Content[5:])
+	replyID := evalAndReply(session, "channel-response", message.ChannelID, message.Content[5:])
+	msgSet.Add(message.ID, replyID)
+}
+
+func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
+	log.S(log.Debug, "message update", log.Any("message", message))
+	if message.Author.ID == session.State.User.ID {
+		return
+	}
+	reply, found := msgSet.Get(message.ID)
+	if !found {
+		log.S(log.Debug, "message not handled before", log.Any("id", message.ID))
+		return
+	}
+	log.S(log.Info, "message edit detected", log.Any("id", message.ID), log.Any("reply", reply), log.String("new-content", message.Content))
 }
