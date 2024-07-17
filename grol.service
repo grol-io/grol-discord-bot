@@ -1,0 +1,23 @@
+# Systemd thin wrapper to run with restarts etc.
+# Install/setup:
+#   sudo ln -s `pwd`/grol.service /etc/systemd/system
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart grol
+#   sudo systemctl status grol
+# Monitor the logs using:
+#   journalctl -u grol -o cat -f | logc
+# (go install fortio.org/logc@latest)
+[Unit]
+Description=GROL Discord bot
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/grol-discord-bot
+ExecStart=/home/ubuntu/go/bin/grol-discord-bot
+Restart=always
+RestartSec=1
+# Place the DISCORD_BOT_TOKEN= in that file and chmod 400 it.
+EnvironmentFile=/home/ubuntu/grol-discord-bot/.dtoken
+
+[Install]
+WantedBy=multi-user.target
