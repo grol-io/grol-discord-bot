@@ -7,7 +7,8 @@ import (
 	"fortio.org/log"
 )
 
-// Double Linked list node
+// Double Linked list node.
+// Note: wrote this before I saw containers/list (!).
 type Node[K, V any] struct {
 	Key      K
 	Value    V
