@@ -170,6 +170,14 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		serverName = server.Name
 	}
 	if !strings.HasPrefix(message.Content, "!grol") {
+		if replyID != "" {
+			// delete the reply if it's not a grol command anymore
+			log.S(log.Info, "no prefix anymore, deleting previous reply", log.Any("replyID", replyID))
+			err := session.ChannelMessageDelete(message.ChannelID, replyID)
+			if err != nil {
+				log.S(log.Error, "unable to delete message", log.Any("err", err))
+			}
+		}
 		return
 	}
 	log.S(log.Info, "channel-message",
