@@ -1,4 +1,4 @@
-package bot
+package main
 
 import (
 	"strings"
@@ -8,12 +8,16 @@ import (
 	"fortio.org/scli"
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
+	"grol.io/grol-discord-bot/fixedmap"
 	"grol.io/grol/repl"
 )
 
 var BotToken string
 
-func Run() {
+var msgSet *fixedmap.FixedMap[string, string]
+
+func Run(maxHistoryLength int) {
+	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
 	session.StateEnabled = true
@@ -21,8 +25,9 @@ func Run() {
 		log.Fatalf("Init discordgo.New error: %v", err)
 	}
 
-	// add a event handler
+	// add event handlers
 	session.AddHandler(newMessage)
+	session.AddHandler(updateMessage)
 
 	// open session
 	err = session.Open()
@@ -35,7 +40,19 @@ func Run() {
 	scli.UntilInterrupted()
 }
 
-func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
+func updateMap(msgID, replyID string) {
+	node, isNew := msgSet.Add(msgID, replyID)
+	msg := "Updated message in history"
+	if isNew {
+		msg = "Added new message to history"
+	}
+	log.S(log.Verbose, msg, log.Any("msgID", msgID), log.Any("replyID", replyID))
+	if node != nil {
+		log.S(log.Verbose, "Evicted message from history", log.Any("msgID", node.Key), log.Any("replyID", node.Value))
+	}
+}
+
+func handleDM(session *discordgo.Session, message *discordgo.Message, replyID string) {
 	log.S(log.Info, "direct-message",
 		log.Any("from", message.Author.Username),
 		log.Any("content", message.Content))
@@ -44,7 +61,8 @@ func handleDM(session *discordgo.Session, message *discordgo.MessageCreate) {
 		return
 	}
 	what := strings.TrimPrefix(message.Content, "!grol")
-	evalAndReply(session, "dm-reply", message.ChannelID, what)
+	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID)
+	updateMap(message.ID, replyID)
 }
 
 var growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
@@ -57,7 +75,8 @@ func removeTripleBackticks(s string) string {
 	return s
 }
 
-func evalAndReply(session *discordgo.Session, info, channelID, input string) {
+// returns the id of the reply.
+func evalAndReply(session *discordgo.Session, info, channelID, input string, replyID string) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -77,7 +96,8 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 	case "buildinfo":
 		res = "📦ℹ️```" + cli.FullVersion + "```"
 	case "bug":
-		res = "🐞 Please report any issue or suggestion at [github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
+		res = "🐞 Please report any issue or suggestion at " +
+			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		// TODO: Maybe better quoting.
@@ -95,14 +115,22 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string) {
 		}
 	}
 	log.S(log.Info, info, log.String("response", res))
-	reply(session, channelID, res)
+	return reply(session, channelID, res, replyID)
 }
 
-func reply(session *discordgo.Session, channelID, response string) {
-	_, err := session.ChannelMessageSend(channelID, response)
+func reply(session *discordgo.Session, channelID, response, replyID string) string {
+	var err error
+	if replyID != "" {
+		_, err = session.ChannelMessageEdit(channelID, replyID, response)
+	} else {
+		var reply *discordgo.Message
+		reply, err = session.ChannelMessageSend(channelID, response)
+		replyID = reply.ID
+	}
 	if err != nil {
 		log.S(log.Error, "error", log.Any("err", err))
 	}
+	return replyID
 }
 
 func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
@@ -114,10 +142,14 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.Author.ID == session.State.User.ID {
 		return
 	}
+	handleMessage(session, message, "")
+}
+
+func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate, replyID string) {
 	isDM := message.GuildID == ""
 	message.Content = strings.TrimSpace(message.Content)
 	if isDM {
-		handleDM(session, message)
+		handleDM(session, message.Message, replyID)
 		return
 	}
 	// Is this cached/efficient to keep doing?
@@ -138,6 +170,14 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		serverName = server.Name
 	}
 	if !strings.HasPrefix(message.Content, "!grol") {
+		if replyID != "" {
+			// delete the reply if it's not a grol command anymore
+			log.S(log.Info, "no prefix anymore, deleting previous reply", log.Any("replyID", replyID))
+			err := session.ChannelMessageDelete(message.ChannelID, replyID)
+			if err != nil {
+				log.S(log.Error, "unable to delete message", log.Any("err", err))
+			}
+		}
 		return
 	}
 	log.S(log.Info, "channel-message",
@@ -149,5 +189,23 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	evalAndReply(session, "channel-response", message.ChannelID, message.Content[5:])
+	replyID = evalAndReply(session, "channel-response", message.ChannelID, message.Content[5:], replyID)
+	updateMap(message.ID, replyID)
+}
+
+func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
+	log.S(log.Debug, "message update", log.Any("message", message))
+	if message.Author.ID == session.State.User.ID {
+		return
+	}
+	reply, found := msgSet.Get(message.ID)
+	if !found {
+		log.S(log.Debug, "message not handled before", log.Any("id", message.ID))
+		return
+	}
+	log.S(log.Info, "message edit detected",
+		log.Any("id", message.ID),
+		log.Any("reply", reply),
+		log.String("new-content", message.Content))
+	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
 }
