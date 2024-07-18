@@ -40,6 +40,18 @@ func Run(maxHistoryLength int) {
 	scli.UntilInterrupted()
 }
 
+func updateMap(msgID, replyID string) {
+	node, isNew := msgSet.Add(msgID, replyID)
+	msg := "Updated message in history"
+	if isNew {
+		msg = "Added new message to history"
+	}
+	log.S(log.Verbose, msg, log.Any("msgID", msgID), log.Any("replyID", replyID))
+	if node != nil {
+		log.S(log.Verbose, "Evicted message from history", log.Any("msgID", node.Key), log.Any("replyID", node.Value))
+	}
+}
+
 func handleDM(session *discordgo.Session, message *discordgo.Message, replyID string) {
 	log.S(log.Info, "direct-message",
 		log.Any("from", message.Author.Username),
@@ -50,15 +62,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	}
 	what := strings.TrimPrefix(message.Content, "!grol")
 	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID)
-	node, isNew := msgSet.Add(message.ID, replyID)
-	msg := "Updated message in history"
-	if isNew {
-		msg = "Added new message to history"
-	}
-	log.S(log.Info, msg, log.Any("msgID", message.ID), log.Any("replyID", replyID))
-	if node != nil {
-		log.S(log.Info, "Evicted message from history", log.Any("msgID", node.Key), log.Any("replyID", node.Value))
-	}
+	updateMap(message.ID, replyID)
 }
 
 var growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
@@ -178,7 +182,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		return
 	}
 	replyID = evalAndReply(session, "channel-response", message.ChannelID, message.Content[5:], replyID)
-	msgSet.Add(message.ID, replyID)
+	updateMap(message.ID, replyID)
 }
 
 func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
