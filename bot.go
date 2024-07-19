@@ -28,6 +28,7 @@ func Run(maxHistoryLength int) {
 	// add event handlers
 	session.AddHandler(newMessage)
 	session.AddHandler(updateMessage)
+	session.AddHandler(interactionCreate)
 
 	// open session
 	err = session.Open()
@@ -35,6 +36,8 @@ func Run(maxHistoryLength int) {
 		log.Fatalf("Init discordgo.Open error: %v", err)
 	}
 	defer session.Close() // close session, after function termination
+
+	registerCommands(session)
 
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
@@ -75,8 +78,7 @@ func removeTripleBackticks(s string) string {
 	return s
 }
 
-// returns the id of the reply.
-func evalAndReply(session *discordgo.Session, info, channelID, input string, replyID string) string {
+func eval(input string) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -87,7 +89,9 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string, rep
 	case "help":
 		res = "💡 Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without :=).\n\n" +
-			"also supported `!grol version`, `!grol source`, `!grol buildinfo`"
+			"Either in DM or with !grol prefix in a channel, you can type any grol code and the bot will evaluate it.\n\n" +
+			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
+			"You can also try the /grol command, answers will be visible only to you!"
 	case "source":
 		res = "📄 [github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
 			" and [grol-io](<https://grol.io>)"
@@ -114,6 +118,12 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string, rep
 			res = "```go\n" + res + "\n```"
 		}
 	}
+	return res
+}
+
+// returns the id of the reply.
+func evalAndReply(session *discordgo.Session, info, channelID, input string, replyID string) string {
+	res := eval(input)
 	log.S(log.Info, info, log.String("response", res))
 	return reply(session, channelID, res, replyID)
 }
@@ -208,4 +218,92 @@ func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate)
 		log.Any("reply", reply),
 		log.String("new-content", message.Content))
 	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
+}
+
+func registerCommands(session *discordgo.Session) {
+	command := &discordgo.ApplicationCommand{
+		Name:        "grol",
+		Description: "Information about GROL",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "command",
+				Description: "Get information about GROL",
+				Required:    true,
+				Choices: []*discordgo.ApplicationCommandOptionChoice{
+					{
+						Name:  "help",
+						Value: "help",
+					},
+					{
+						Name:  "version",
+						Value: "version",
+					},
+					{
+						Name:  "source",
+						Value: "source",
+					},
+					{
+						Name:  "bug",
+						Value: "bug",
+					},
+				},
+			},
+		},
+	}
+
+	_, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
+	if err != nil {
+		log.Fatalf("Cannot create command: %v", err)
+	}
+}
+
+func interactionCreate(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
+	if interaction.Type != discordgo.InteractionApplicationCommand {
+		log.LogVf("Ignoring non command interaction type: %v", interaction.Type)
+		return
+	}
+	for _, option := range interaction.ApplicationCommandData().Options {
+		serverName := "DM"
+		channelName := "DM"
+		userName := ""
+		server := interaction.GuildID
+		if server != "" { //nolint:nestif // TODO share with in handleMessage
+			channel, err := session.State.Channel(interaction.ChannelID)
+			if err != nil {
+				log.S(log.Error, "unable to get channel info", log.Any("err", err))
+				channelName = "unknown"
+			} else {
+				channelName = channel.Name
+			}
+			svr, err := session.State.Guild(interaction.GuildID)
+			if err != nil {
+				log.S(log.Error, "unable to get server info", log.Any("err", err))
+				serverName = "unknown"
+			} else {
+				serverName = svr.Name
+			}
+			userName = interaction.Member.User.Username
+		} else {
+			userName = interaction.User.Username
+		}
+		log.S(log.Info, "interaction",
+			log.Any("from", userName),
+			log.Any("server", serverName),
+			log.Any("channel", channelName),
+			log.Any("content", option))
+		option := option.StringValue()
+		responseMessage := eval(option)
+		response := &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: responseMessage,
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		}
+		err := session.InteractionRespond(interaction.Interaction, response)
+		if err != nil {
+			log.Errf("Error responding to interaction: %v", err)
+		}
+	}
 }
