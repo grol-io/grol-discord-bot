@@ -14,7 +14,10 @@ import (
 
 var BotToken string
 
+// State for edit to replies.
 var msgSet *fixedmap.FixedMap[string, string]
+
+const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
 	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
@@ -167,7 +170,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	var channelName string
 	if err != nil {
 		log.S(log.Error, "unable to get channel info", log.Any("err", err))
-		channelName = "unknown"
+		channelName = Unknown
 	} else {
 		channelName = channel.Name
 	}
@@ -175,7 +178,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	var serverName string
 	if err != nil {
 		log.S(log.Error, "unable to get server info", log.Any("err", err))
-		serverName = "unknown"
+		serverName = Unknown
 	} else {
 		serverName = server.Name
 	}
@@ -272,14 +275,14 @@ func interactionCreate(session *discordgo.Session, interaction *discordgo.Intera
 			channel, err := session.State.Channel(interaction.ChannelID)
 			if err != nil {
 				log.S(log.Error, "unable to get channel info", log.Any("err", err))
-				channelName = "unknown"
+				channelName = Unknown
 			} else {
 				channelName = channel.Name
 			}
 			svr, err := session.State.Guild(interaction.GuildID)
 			if err != nil {
 				log.S(log.Error, "unable to get server info", log.Any("err", err))
-				serverName = "unknown"
+				serverName = Unknown
 			} else {
 				serverName = svr.Name
 			}
