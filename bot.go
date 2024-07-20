@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	"fortio.org/cli"
 	"fortio.org/log"
@@ -17,9 +18,12 @@ var BotToken string
 // State for edit to replies.
 var msgSet *fixedmap.FixedMap[string, string]
 
+var startTime time.Time
+
 const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
+	startTime = time.Now()
 	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
@@ -98,8 +102,11 @@ func eval(input string) string {
 	case "source":
 		res = "📄 [github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
 			" and [grol-io](<https://grol.io>)"
+	case "uptime":
+		fallthrough
 	case "version":
-		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion
+		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion +
+			" ⏰ Uptime: " + time.Since(startTime).Round(100*time.Millisecond).String()
 	case "buildinfo":
 		res = "📦ℹ️```" + cli.FullVersion + "```"
 	case "bug":
