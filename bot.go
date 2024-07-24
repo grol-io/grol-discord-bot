@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -85,6 +86,17 @@ func removeTripleBackticks(s string) string {
 	return s
 }
 
+func UptimeString() string {
+	rounded := time.Since(startTime).Round(100 * time.Millisecond)
+	// get number of days out:
+	days := rounded / (24 * time.Hour)
+	if days == 0 {
+		return rounded.String()
+	}
+	rounded -= days * 24 * time.Hour
+	return strconv.Itoa(int(days)) + "d" + rounded.String()
+}
+
 func eval(input string) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
@@ -106,7 +118,7 @@ func eval(input string) string {
 		fallthrough
 	case "version":
 		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion +
-			" ⏰ Uptime: " + time.Since(startTime).Round(100*time.Millisecond).String()
+			" ⏰ Uptime: " + UptimeString()
 	case "buildinfo":
 		res = "📦ℹ️```" + cli.FullVersion + "```"
 	case "bug":
