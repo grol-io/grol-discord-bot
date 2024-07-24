@@ -19,12 +19,12 @@ var BotToken string
 // State for edit to replies.
 var msgSet *fixedmap.FixedMap[string, string]
 
-var startTime time.Time
+var botStartTime time.Time
 
 const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
-	startTime = time.Now()
+	botStartTime = time.Now()
 	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
@@ -86,15 +86,23 @@ func removeTripleBackticks(s string) string {
 	return s
 }
 
-func UptimeString() string {
-	rounded := time.Since(startTime).Round(100 * time.Millisecond)
+func UptimeString(startTime time.Time) string {
+	return DurationString(time.Since(startTime))
+}
+
+// DurationString returns a human readable string for a duration.
+// Expressed in days, hours, minutes, seconds and 10th of second.
+// days, hours etc are omitted if they are 0.
+func DurationString(d time.Duration) string {
+	rounded := d.Round(100 * time.Millisecond)
 	// get number of days out:
-	days := rounded / (24 * time.Hour)
+	oneDay := 24 * time.Hour
+	days := int(rounded / oneDay)
 	if days == 0 {
 		return rounded.String()
 	}
-	rounded -= days * 24 * time.Hour
-	return strconv.Itoa(int(days)) + "d" + rounded.String()
+	rounded -= time.Duration(days) * oneDay
+	return strconv.Itoa(days) + "d" + rounded.String()
 }
 
 func eval(input string) string {
@@ -118,7 +126,7 @@ func eval(input string) string {
 		fallthrough
 	case "version":
 		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion +
-			" ⏰ Uptime: " + UptimeString()
+			" ⏰ Uptime: " + UptimeString(botStartTime)
 	case "buildinfo":
 		res = "📦ℹ️```" + cli.FullVersion + "```"
 	case "bug":
