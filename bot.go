@@ -135,9 +135,16 @@ func eval(input string) string {
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		// TODO: Maybe better quoting.
+		// TODO: if there are ``` sections then only evaluate these and not text around, so one can say stuff like
+		//   !grol
+		//   ```go
+		//   1+1
+		//   ```
+		//   look at the result of 1+1
+		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = removeTripleBackticks(input)
 		var errs []string
-		res, errs = repl.EvalString(input)
+		res, errs, _ = repl.EvalString(input)
 		if len(errs) > 0 {
 			res = "```diff"
 			for _, e := range errs {
