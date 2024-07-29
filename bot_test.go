@@ -35,7 +35,8 @@ func TestRemoveBackticks(t *testing.T) {
 		input, expected string
 	}{
 		{"   foo   \n   bar   ", "foo   \n   bar"},
-		{`
+		{
+			`
 this is before code
 ` + "```go" + `
 a=1
@@ -44,7 +45,8 @@ b=2
 some stuff after code`,
 			"a=1\nb=2",
 		},
-		{`
+		{
+			`
 this is before code
 ` + "```go" + `
 a=1
