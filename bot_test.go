@@ -28,3 +28,37 @@ func TestUptime(t *testing.T) {
 		t.Errorf("Expected %v, but got %v", expected, actual)
 	}
 }
+
+func TestRemoveBackticks(t *testing.T) {
+	// table driven inpute,expected
+	tests := []struct {
+		input, expected string
+	}{
+		{"   foo   \n   bar   ", "foo   \n   bar"},
+		{`
+this is before code
+` + "```go" + `
+a=1
+b=2
+` + "```" + `
+some stuff after code`,
+			"a=1\nb=2",
+		},
+		{`
+this is before code
+` + "```go" + `
+a=1
+b=2
+` + "```" + `
+some stuff after code
+` + "```c=3``` and ```d=4```",
+			"a=1\nb=2\nc=3",
+		},
+	}
+	for _, test := range tests {
+		actual := bot.RemoveTripleBackticks(test.input)
+		if actual != test.expected {
+			t.Errorf("---For---\n%s\n---Expected %q, but got %q", test.input, test.expected, actual)
+		}
+	}
+}

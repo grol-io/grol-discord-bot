@@ -78,12 +78,35 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 
 var growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
 
-func removeTripleBackticks(s string) string {
-	s = strings.TrimPrefix(s, "```grol")
-	s = strings.TrimPrefix(s, "```go")
-	s = strings.TrimPrefix(s, "```")
-	s = strings.TrimSuffix(s, "```")
-	return s
+func RemoveTripleBackticks(s string) string {
+	// Extract the code in between triple backticks, ignoring the language tag if any.
+	buf := strings.Builder{}
+	first := true
+	for {
+		i := strings.Index(s, "```")
+		if i == -1 {
+			if first {
+				buf.WriteString(s)
+			}
+			break
+		}
+		if first {
+			buf.WriteString("\n") // separate from previous
+		}
+		first = false
+		s = s[i:]
+		s = strings.TrimPrefix(s, "```grol")
+		s = strings.TrimPrefix(s, "```go")
+		s = strings.TrimPrefix(s, "```")
+		j := strings.Index(s, "```")
+		if j == -1 {
+			buf.WriteString(s)
+			break
+		}
+		buf.WriteString(s[:j])
+		s = s[j+3:]
+	}
+	return strings.TrimSpace(buf.String())
 }
 
 func UptimeString(startTime time.Time) string {
@@ -142,7 +165,7 @@ func eval(input string) string {
 		//   ```
 		//   look at the result of 1+1
 		// in a single message and not get errors on the extra text (meanwhile, add //).
-		input = removeTripleBackticks(input)
+		input = RemoveTripleBackticks(input)
 		var errs []string
 		res, errs, _ = repl.EvalString(input)
 		if len(errs) > 0 {
