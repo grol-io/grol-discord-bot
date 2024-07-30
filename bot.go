@@ -82,6 +82,7 @@ func RemoveTripleBackticks(s string) string {
 	// Extract the code in between triple backticks, ignoring the language tag if any.
 	buf := strings.Builder{}
 	first := true
+	needNewline := false
 	for {
 		i := strings.Index(s, "```")
 		if i == -1 {
@@ -90,8 +91,8 @@ func RemoveTripleBackticks(s string) string {
 			}
 			break
 		}
-		if first {
-			buf.WriteString("\n") // separate from previous
+		if needNewline {
+			buf.WriteString("\n") // separate from previous set that didn't end with a newline.
 		}
 		first = false
 		s = s[i:]
@@ -103,6 +104,7 @@ func RemoveTripleBackticks(s string) string {
 			buf.WriteString(s)
 			break
 		}
+		needNewline = (s[j-1] != '\n')
 		buf.WriteString(s[:j])
 		s = s[j+3:]
 	}

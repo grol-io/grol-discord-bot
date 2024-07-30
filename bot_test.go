@@ -54,7 +54,7 @@ b=2
 ` + "```" + `
 some stuff after code
 ` + "```c=3``` and ```d=4```",
-			"a=1\nb=2\nc=3",
+			"a=1\nb=2\nc=3\nd=4",
 		},
 	}
 	for _, test := range tests {
