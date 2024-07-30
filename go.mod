@@ -3,12 +3,12 @@ module grol.io/grol-discord-bot
 go 1.22.5
 
 require (
-	fortio.org/cli v1.7.0
+	fortio.org/cli v1.8.0
 	fortio.org/log v1.16.0
 	fortio.org/scli v1.15.1
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
-	grol.io/grol v0.26.0
+	grol.io/grol v0.27.0
 )
 
 require (
