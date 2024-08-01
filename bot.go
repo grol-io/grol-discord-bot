@@ -72,13 +72,17 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		return
 	}
 	formatMode := strings.HasPrefix(message.Content, formatModeStr)
+	compactMode := strings.HasPrefix(message.Content, compactModeStr)
 	var what string
-	if formatMode {
+	switch {
+	case formatMode:
 		what = strings.TrimPrefix(message.Content, formatModeStr)
-	} else {
+	case compactMode:
+		what = strings.TrimPrefix(message.Content, compactModeStr)
+	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
 	}
-	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode)
+	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode, compactMode)
 	updateMap(message.ID, replyID)
 }
 
@@ -86,6 +90,7 @@ var (
 	growlVersion, _, _ = version.FromBuildInfoPath("grol.io/grol")
 	grolPrefix         = "!grol"
 	formatModeStr      = grolPrefix + " -f"
+	compactModeStr     = grolPrefix + " -c"
 )
 
 func RemoveTripleBackticks(s string) string {
@@ -140,7 +145,7 @@ func DurationString(d time.Duration) string {
 	return strconv.Itoa(days) + "d" + rounded.String()
 }
 
-func eval(input string, formatMode bool) string {
+func eval(input string, formatMode bool, compactMode bool) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -151,7 +156,7 @@ func eval(input string, formatMode bool) string {
 	case "help":
 		res = "💡 Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without :=).\n\n" +
-			"Either in DM or with `!grol` prefix (or `!grol -f` for also showing formatted code) in a channel, " +
+			"Either in DM or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode) in a channel, " +
 			"you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
 			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
 			"You can also try the /grol command, answers will be visible only to you!"
@@ -177,9 +182,14 @@ func eval(input string, formatMode bool) string {
 		//   look at the result of 1+1
 		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = RemoveTripleBackticks(input)
+		repl.CompactEvalString = compactMode
 		evalres, errs, formatted := repl.EvalString(input)
-		if formatMode {
-			res = formatModeStr + "\n```go\n" + formatted + "```is\n"
+		if formatMode || compactMode {
+			res = formatModeStr
+			if compactMode {
+				res = compactModeStr
+			}
+			res += "\n```go\n" + formatted + "```is\n"
 		}
 		if len(errs) > 0 {
 			res += "```diff"
@@ -195,8 +205,10 @@ func eval(input string, formatMode bool) string {
 }
 
 // returns the id of the reply.
-func evalAndReply(session *discordgo.Session, info, channelID, input string, replyID string, formatMode bool) string {
-	res := eval(input, formatMode)
+func evalAndReply(session *discordgo.Session, info, channelID, input string,
+	replyID string, formatMode, compactMode bool,
+) string {
+	res := eval(input, formatMode, compactMode)
 	log.S(log.Info, info, log.String("response", res))
 	return reply(session, channelID, res, replyID)
 }
@@ -264,9 +276,15 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		return
 	}
 	formatMode := strings.HasPrefix(message.Content, formatModeStr)
-	content := message.Content[len(grolPrefix):]
-	if formatMode {
+	compactMode := strings.HasPrefix(message.Content, compactModeStr)
+	var content string
+	switch {
+	case formatMode:
 		content = message.Content[len(formatModeStr):]
+	case compactMode:
+		content = message.Content[len(compactModeStr):]
+	default:
+		content = message.Content[len(grolPrefix):]
 	}
 	log.S(log.Info, "channel-message",
 		log.Any("from", message.Author.Username),
@@ -278,7 +296,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	replyID = evalAndReply(session, "channel-response", message.ChannelID, content, replyID, formatMode)
+	replyID = evalAndReply(session, "channel-response", message.ChannelID, content, replyID, formatMode, compactMode)
 	updateMap(message.ID, replyID)
 }
 
@@ -372,7 +390,7 @@ func interactionCreate(session *discordgo.Session, interaction *discordgo.Intera
 			log.Any("channel", channelName),
 			log.Any("content", option))
 		option := option.StringValue()
-		responseMessage := eval(option, false)
+		responseMessage := eval(option, false, false)
 		response := &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
