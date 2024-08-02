@@ -2,6 +2,7 @@
 # Install/setup:
 #   sudo ln -s `pwd`/grol.service /etc/systemd/system
 #   sudo systemctl daemon-reload
+#   sudo systemctl enable grol
 #   sudo systemctl restart grol
 #   sudo systemctl status grol
 # Monitor the logs using:
