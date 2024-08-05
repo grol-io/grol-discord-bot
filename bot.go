@@ -26,7 +26,10 @@ const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
 	botStartTime = time.Now()
-	extensions.Init()
+	err := extensions.Init()
+	if err != nil {
+		log.Fatalf("Grol extensions init error: %v", err)
+	}
 	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
