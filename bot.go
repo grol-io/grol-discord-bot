@@ -156,11 +156,10 @@ func eval(input string, formatMode bool, compactMode bool) string {
 	switch input {
 	case "":
 		fallthrough
-	case "info":
-		fallthrough
 	case "help":
 		res = "💡 Grol bot help: grol bot evaluates grol language fragments, as simple as expressions like `1+1`" +
-			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without :=).\n\n" +
+			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
+			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc...\n\n" +
 			"Either in DM or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode) in a channel, " +
 			"you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
 			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
