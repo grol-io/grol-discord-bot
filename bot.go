@@ -11,6 +11,7 @@ import (
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol-discord-bot/fixedmap"
+	"grol.io/grol/extensions"
 	"grol.io/grol/repl"
 )
 
@@ -25,6 +26,10 @@ const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
 	botStartTime = time.Now()
+	err := extensions.Init()
+	if err != nil {
+		log.Fatalf("Grol extensions init error: %v", err)
+	}
 	msgSet = fixedmap.NewFixedMap[string, string](maxHistoryLength)
 	// create a session
 	session, err := discordgo.New("Bot " + BotToken)
