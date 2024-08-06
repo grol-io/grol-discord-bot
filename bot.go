@@ -193,11 +193,13 @@ func eval(input string, formatMode bool, compactMode bool) string {
 			if compactMode {
 				res = compactModeStr
 			}
-			res += "\n```go\n" + formatted + "```is\n"
+			res += "\n```go\n" + formatted + "``` produces: "
 		}
 		evalres = strings.TrimSpace(evalres)
 		if evalres != "" {
-			res += "```go\n" + evalres + "\n```"
+			res += "```go\n" + evalres + "\n```\n"
+		} else {
+			res += "no output.\n"
 		}
 		if len(errs) > 0 {
 			res += "```diff"
