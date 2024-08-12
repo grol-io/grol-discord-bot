@@ -18,3 +18,6 @@ CGO_ENABLED=0 go install -trimpath -ldflags="-w -s" grol.io/grol-discord-bot@lat
 And see [grol.service](grol.service) for systemd setup.
 
 Though really... We're running it
+
+
+Current default setup allows `save()` and thus `load()` to a single `.gr` file in the CWD.

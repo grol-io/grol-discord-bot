@@ -26,7 +26,12 @@ const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
 	botStartTime = time.Now()
-	err := extensions.Init()
+	extCfg := extensions.ExtensionConfig{
+		HasLoad:           true,
+		HasSave:           true,
+		LoadSaveEmptyOnly: true,
+	}
+	err := extensions.Init(&extCfg)
 	if err != nil {
 		log.Fatalf("Grol extensions init error: %v", err)
 	}
