@@ -48,6 +48,7 @@ func Run(maxHistoryLength int) {
 	session.AddHandler(newMessage)
 	session.AddHandler(updateMessage)
 	session.AddHandler(interactionCreate)
+	session.AddHandler(deleteMessage)
 
 	// open session
 	err = session.Open()
@@ -323,7 +324,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 
 func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
 	log.S(log.Debug, "message update", log.Any("message", message))
-	if message.Author.ID == session.State.User.ID {
+	if message.Author.ID == session.State.User.ID { // self update bail?
 		return
 	}
 	reply, found := msgSet.Get(message.ID)
@@ -335,6 +336,20 @@ func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate)
 		log.Any("id", message.ID),
 		log.Any("reply", reply),
 		log.String("new-content", message.Content))
+	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
+}
+
+func deleteMessage(session *discordgo.Session, message *discordgo.MessageDelete) {
+	log.S(log.Debug, "message delete", log.Any("message", message), log.Any("before", message.BeforeDelete))
+	reply, found := msgSet.Get(message.ID)
+	if !found {
+		log.S(log.Debug, "message not handled before", log.Any("id", message.ID))
+		return
+	}
+	log.S(log.Info, "message delete detected",
+		log.Any("id", message.ID),
+		log.Any("reply", reply),
+		log.Any("before", message.BeforeDelete))
 	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
 }
 
