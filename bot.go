@@ -161,6 +161,33 @@ func DurationString(d time.Duration) string {
 	return strconv.Itoa(days) + "d" + rounded.String()
 }
 
+const smartQuotes = "“”"
+
+func SmartQuotesToRegular(s string) string {
+	idx := strings.IndexAny(s, smartQuotes)
+	// Not found or between regular quotes or escaped = keep as is.
+	if idx == -1 || (idx > 0 && (s[idx-1] == '"' || s[idx-1] == '\\')) {
+		return s
+	}
+	buf := make([]byte, 0, len(s)-2) // smart quotes are 3 bytes each
+	buf = append(buf, s[:idx]...)
+	replaceQuote := func(rel int) {
+		buf = append(buf, s[idx:idx+rel]...)
+		buf = append(buf, '"')
+		idx += rel + 3
+	}
+	replaceQuote(0) // Replace the first smart quote
+	for {
+		rel := strings.IndexAny(s[idx:], smartQuotes)
+		if rel == -1 {
+			buf = append(buf, s[idx:]...)
+			break
+		}
+		replaceQuote(rel)
+	}
+	return string(buf)
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
 func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 	var res string
@@ -207,14 +234,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 			AutoSave: AutoLoadSave,
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
-		replacer := strings.NewReplacer(
-			"“", `"`,
-			"”", `"`,
-			"‘", `'`,
-			"’", `'`,
-		)
-		// Replace all occurrences
-		input = replacer.Replace(input)
+		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
 		if formatMode || compactMode {
 			res = formatModeStr
