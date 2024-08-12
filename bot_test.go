@@ -64,3 +64,30 @@ some stuff after code
 		}
 	}
 }
+
+func TestSmartQuotesToRegular(t *testing.T) {
+	// table driven inpute,expected
+	tests := []struct {
+		input, expected string
+	}{
+		{"   no quotes  ", "   no quotes  "},
+		{
+			"“this is a quote”",
+			`"this is a quote"`,
+		},
+		{
+			`\“”`,
+			`\“”`,
+		},
+		{
+			`len("“")`,
+			`len("“")`,
+		},
+	}
+	for _, test := range tests {
+		actual := bot.SmartQuotesToRegular(test.input)
+		if actual != test.expected {
+			t.Errorf("---For---\n%s\n---Expected %q, but got %q", test.input, test.expected, actual)
+		}
+	}
+}
