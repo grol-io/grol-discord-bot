@@ -206,6 +206,15 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 			AutoLoad: AutoLoadSave,
 			AutoSave: AutoLoadSave,
 		}
+		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
+		replacer := strings.NewReplacer(
+			"“", `"`,
+			"”", `"`,
+			"‘", `'`,
+			"’", `'`,
+		)
+		// Replace all occurrences
+		input = replacer.Replace(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
 		if formatMode || compactMode {
 			res = formatModeStr
