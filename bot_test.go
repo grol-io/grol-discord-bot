@@ -83,6 +83,14 @@ func TestSmartQuotesToRegular(t *testing.T) {
 			`len("“")`,
 			`len("“")`,
 		},
+		{
+			`load(“”)`,
+			`load("")`,
+		},
+		{
+			"println(“this is a quote”); println(“this is another quote”)",
+			`println("this is a quote"); println("this is another quote")`,
+		},
 	}
 	for _, test := range tests {
 		actual := bot.SmartQuotesToRegular(test.input)

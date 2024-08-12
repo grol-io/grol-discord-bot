@@ -171,17 +171,19 @@ func SmartQuotesToRegular(s string) string {
 	}
 	buf := make([]byte, 0, len(s)-2) // smart quotes are 3 bytes each
 	buf = append(buf, s[:idx]...)
-	buf = append(buf, '"')
-	idx += 3
+	replaceQuote := func(rel int) {
+		buf = append(buf, s[idx:idx+rel]...)
+		buf = append(buf, '"')
+		idx += rel + 3
+	}
+	replaceQuote(0) // Replace the first smart quote
 	for {
 		rel := strings.IndexAny(s[idx:], smartQuotes)
 		if rel == -1 {
 			buf = append(buf, s[idx:]...)
 			break
 		}
-		buf = append(buf, s[idx:idx+rel]...)
-		buf = append(buf, '"')
-		idx += rel + 3
+		replaceQuote(rel)
 	}
 	return string(buf)
 }
