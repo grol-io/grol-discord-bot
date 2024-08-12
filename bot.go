@@ -85,16 +85,19 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	}
 	formatMode := strings.HasPrefix(message.Content, formatModeStr)
 	compactMode := strings.HasPrefix(message.Content, compactModeStr)
+	verbatimMode := strings.HasPrefix(message.Content, verbatimModeStr)
 	var what string
 	switch {
 	case formatMode:
 		what = strings.TrimPrefix(message.Content, formatModeStr)
 	case compactMode:
 		what = strings.TrimPrefix(message.Content, compactModeStr)
+	case verbatimMode:
+		what = strings.TrimPrefix(message.Content, verbatimModeStr)
 	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
 	}
-	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode, compactMode)
+	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode, compactMode, verbatimMode)
 	updateMap(message.ID, replyID)
 }
 
@@ -103,6 +106,7 @@ var (
 	grolPrefix         = "!grol"
 	formatModeStr      = grolPrefix + " -f"
 	compactModeStr     = grolPrefix + " -c"
+	verbatimModeStr    = grolPrefix + " -v"
 )
 
 func RemoveTripleBackticks(s string) string {
@@ -157,7 +161,8 @@ func DurationString(d time.Duration) string {
 	return strconv.Itoa(days) + "d" + rounded.String()
 }
 
-func eval(input string, formatMode bool, compactMode bool) string {
+// TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
+func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -211,6 +216,9 @@ func eval(input string, formatMode bool, compactMode bool) string {
 		}
 		evalres = strings.TrimSpace(evalres)
 		if evalres != "" {
+			if verbatimMode {
+				return evalres
+			}
 			res += "```go\n" + evalres + "\n```\n"
 		} else {
 			res += "no output.\n"
@@ -228,9 +236,9 @@ func eval(input string, formatMode bool, compactMode bool) string {
 
 // returns the id of the reply.
 func evalAndReply(session *discordgo.Session, info, channelID, input string,
-	replyID string, formatMode, compactMode bool,
+	replyID string, formatMode, compactMode, verbatimMode bool,
 ) string {
-	res := eval(input, formatMode, compactMode)
+	res := eval(input, formatMode, compactMode, verbatimMode)
 	log.S(log.Info, info, log.String("response", res))
 	return reply(session, channelID, res, replyID)
 }
@@ -299,12 +307,15 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	}
 	formatMode := strings.HasPrefix(message.Content, formatModeStr)
 	compactMode := strings.HasPrefix(message.Content, compactModeStr)
+	verbatimMode := strings.HasPrefix(message.Content, verbatimModeStr)
 	var content string
 	switch {
 	case formatMode:
 		content = message.Content[len(formatModeStr):]
 	case compactMode:
 		content = message.Content[len(compactModeStr):]
+	case verbatimMode:
+		content = message.Content[len(verbatimModeStr):]
 	default:
 		content = message.Content[len(grolPrefix):]
 	}
@@ -318,7 +329,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	replyID = evalAndReply(session, "channel-response", message.ChannelID, content, replyID, formatMode, compactMode)
+	replyID = evalAndReply(session, "channel-response", message.ChannelID, content, replyID, formatMode, compactMode, verbatimMode)
 	updateMap(message.ID, replyID)
 }
 
@@ -426,7 +437,7 @@ func interactionCreate(session *discordgo.Session, interaction *discordgo.Intera
 			log.Any("channel", channelName),
 			log.Any("content", option))
 		option := option.StringValue()
-		responseMessage := eval(option, false, false)
+		responseMessage := eval(option, false, false, false)
 		response := &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
