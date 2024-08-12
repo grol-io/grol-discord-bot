@@ -15,5 +15,6 @@ func main() {
 	if BotToken == "" {
 		log.Fatalf("DISCORD_BOT_TOKEN must be set")
 	}
+	AutoLoadSave = !(os.Getenv("GROL_DISABLE_AUTOSAVE") == "1")
 	Run(*num)
 }
