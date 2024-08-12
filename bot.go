@@ -15,18 +15,19 @@ import (
 	"grol.io/grol/repl"
 )
 
-var BotToken string
-
-// State for edit to replies.
-var msgSet *fixedmap.FixedMap[string, string]
-
-var botStartTime time.Time
+var (
+	BotToken     string
+	AutoLoadSave bool
+	// State for edit to replies.
+	msgSet       *fixedmap.FixedMap[string, string]
+	botStartTime time.Time
+)
 
 const Unknown = "unknown"
 
 func Run(maxHistoryLength int) {
 	botStartTime = time.Now()
-	extCfg := extensions.ExtensionConfig{
+	extCfg := extensions.Config{
 		HasLoad:           true,
 		HasSave:           true,
 		LoadSaveEmptyOnly: true,
@@ -56,7 +57,7 @@ func Run(maxHistoryLength int) {
 	defer session.Close() // close session, after function termination
 
 	registerCommands(session)
-
+	log.Infof("Bot is now running with AutoLoadSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoLoadSave)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
 }
@@ -191,8 +192,15 @@ func eval(input string, formatMode bool, compactMode bool) string {
 		//   look at the result of 1+1
 		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = RemoveTripleBackticks(input)
-		repl.CompactEvalString = compactMode
-		evalres, errs, formatted := repl.EvalString(input)
+		cfg := repl.Options{
+			All:      true,
+			ShowEval: true,
+			NoColor:  true,
+			Compact:  compactMode,
+			AutoLoad: AutoLoadSave,
+			AutoSave: AutoLoadSave,
+		}
+		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
 		if formatMode || compactMode {
 			res = formatModeStr
 			if compactMode {
