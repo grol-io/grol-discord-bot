@@ -165,7 +165,8 @@ const smartQuotes = "“”"
 
 func SmartQuotesToRegular(s string) string {
 	idx := strings.IndexAny(s, smartQuotes)
-	// Not found or between regular quotes or escaped = keep as is.
+	// If not found or just after a regular double quote or escaped by \
+	// then keep as is (short cut).
 	if idx == -1 || (idx > 0 && (s[idx-1] == '"' || s[idx-1] == '\\')) {
 		return s
 	}
