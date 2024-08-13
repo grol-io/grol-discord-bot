@@ -70,6 +70,7 @@ func TestSmartQuotesToRegular(t *testing.T) {
 	tests := []struct {
 		input, expected string
 	}{
+		{`abc“def`, `abc"def`},
 		{"   no quotes  ", "   no quotes  "},
 		{
 			"“this is a quote”",

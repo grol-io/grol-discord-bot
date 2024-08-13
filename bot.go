@@ -161,7 +161,10 @@ func DurationString(d time.Duration) string {
 	return strconv.Itoa(days) + "d" + rounded.String()
 }
 
-const smartQuotes = "“”"
+const (
+	smartQuotes   = "“”"                 // 2 of the smart double quotes here
+	smartQuoteLen = len(smartQuotes) / 2 // 3 bytes each
+)
 
 func SmartQuotesToRegular(s string) string {
 	idx := strings.IndexAny(s, smartQuotes)
@@ -170,12 +173,12 @@ func SmartQuotesToRegular(s string) string {
 	if idx == -1 || (idx > 0 && (s[idx-1] == '"' || s[idx-1] == '\\')) {
 		return s
 	}
-	buf := make([]byte, 0, len(s)-2) // smart quotes are 3 bytes each
+	buf := make([]byte, 0, len(s)-smartQuoteLen+1) // smart quotes are 3 bytes each
 	buf = append(buf, s[:idx]...)
 	replaceQuote := func(rel int) {
 		buf = append(buf, s[idx:idx+rel]...)
 		buf = append(buf, '"')
-		idx += rel + 3
+		idx += rel + smartQuoteLen
 	}
 	replaceQuote(0) // Replace the first smart quote
 	for {
