@@ -24,12 +24,12 @@ type FixedMap[K comparable, V any] struct {
 }
 
 // NewFixedMap initializes a new FixedMap with a given maximum size.
-func NewFixedMap[K comparable, V any](max int) *FixedMap[K, V] {
-	if max < 2 {
+func NewFixedMap[K comparable, V any](maxV int) *FixedMap[K, V] {
+	if maxV < 2 {
 		panic("max must be at least 2")
 	}
 	return &FixedMap[K, V]{
-		Max: max,
+		Max: maxV,
 		Map: make(map[K]*Node[K, V]),
 	}
 }
