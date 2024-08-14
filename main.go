@@ -8,6 +8,8 @@ import (
 	"fortio.org/scli"
 )
 
+var depth = flag.Int("max-depth", 10000, "Maximum depth of recursion")
+
 func main() {
 	num := flag.Int("n", 100, "Maximum number of messages to keep in memory for possible edit")
 	scli.ServerMain()
