@@ -19,5 +19,20 @@ And see [grol.service](grol.service) for systemd setup.
 
 Though really... We're running it
 
-
 Current default setup allows `save()` and thus `load()` to a single `.gr` file in the CWD.
+Can be disabled setting env var `GROL_DISABLE_AUTOSAVE=1`.
+
+### Dev bot version
+
+Note for self
+
+Portal: https://discord.com/developers/applications
+
+Add: bot, Send Messages, Send Messages in Thread to Installation
+and MESSAGE CONTENT INTENT in "bot"
+
+Now grol-dev vs grol
+
+Grol dev
+
+https://discord.com/oauth2/authorize?client_id=1273320816066560041
