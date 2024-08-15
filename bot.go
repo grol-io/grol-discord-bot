@@ -241,7 +241,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
-		if formatMode || compactMode {
+		if (formatMode || compactMode) && formatted != "" {
 			res = formatModeStr
 			if compactMode {
 				res = compactModeStr
