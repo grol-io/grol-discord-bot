@@ -266,7 +266,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 }
 
 // Discord's limit - some margin  for adding we are truncating, in characters/runes.
-const MaxMessageLength = 2000 - 100
+const MaxMessageLengthInRunes = 2000 - 100
 
 // returns the id of the reply.
 func evalAndReply(session *discordgo.Session, info, channelID, input string,
@@ -276,8 +276,9 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string,
 	level := log.Info
 	msg := "response"
 	runes := []rune(res)
-	if len(runes) > MaxMessageLength {
-		res = string(runes[:1900]) + fmt.Sprintf("```...truncated from %d characters (%d bytes)...", len(runes), len(res))
+	if len(runes) > MaxMessageLengthInRunes {
+		res = string(runes[:MaxMessageLengthInRunes]) +
+			fmt.Sprintf("```...truncated from %d characters (%d bytes)...", len(runes), len(res))
 		level = log.Warning
 		msg = "truncated response"
 	}
