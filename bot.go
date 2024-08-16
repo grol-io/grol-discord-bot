@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -269,7 +270,15 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string,
 	replyID string, formatMode, compactMode, verbatimMode bool,
 ) string {
 	res := eval(input, formatMode, compactMode, verbatimMode)
-	log.S(log.Info, info, log.String("response", res))
+	level := log.Info
+	msg := "response"
+	if len(res) > 1900 {
+		// hope we didn't garbage some unicode char in the middle of a utf8 char...
+		res = res[:1900] + fmt.Sprintf("```...truncated from %d...", len(res))
+		level = log.Warning
+		msg = "truncated response"
+	}
+	log.S(level, info, log.String(msg, res))
 	return reply(session, channelID, res, replyID)
 }
 
