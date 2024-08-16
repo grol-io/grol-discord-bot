@@ -36,3 +36,9 @@ Now grol-dev vs grol
 Grol dev
 
 https://discord.com/oauth2/authorize?client_id=1273320816066560041
+
+#### To bump grol language version
+
+Run dependabot
+
+https://github.com/grol-io/grol-discord-bot/network/updates
