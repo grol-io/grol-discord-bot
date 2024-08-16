@@ -265,7 +265,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 	return res
 }
 
-// Discord's limit - some margin  for adding we are truncating, in characters/runes.
+// Discord's limit - some margin for that adding we are truncating, in characters/runes.
 const MaxMessageLengthInRunes = 2000 - 100
 
 // returns the id of the reply.
