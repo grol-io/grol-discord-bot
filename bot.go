@@ -277,7 +277,7 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string,
 	msg := "response"
 	runes := []rune(res)
 	if len(runes) > MaxMessageLength {
-		res = string(runes[:1900]) + fmt.Sprintf("```...truncated from %d (%d bytes)...", len(runes), len(res))
+		res = string(runes[:1900]) + fmt.Sprintf("```...truncated from %d characters (%d bytes)...", len(runes), len(res))
 		level = log.Warning
 		msg = "truncated response"
 	}
