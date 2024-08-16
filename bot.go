@@ -197,9 +197,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
-	case "":
-		fallthrough
-	case "help":
+	case "", "help", "-h", "--help", "-help":
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc...\n\n" +
@@ -210,9 +208,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 	case "source":
 		res = "📄 [github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
 			" and [grol-io](<https://grol.io>)"
-	case "uptime":
-		fallthrough
-	case "version":
+	case "uptime", "version", "--version", "-version":
 		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion +
 			" ⏰ Uptime: " + UptimeString(botStartTime)
 	case "buildinfo":
