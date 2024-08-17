@@ -26,7 +26,9 @@ PrivateDevices=true
 # ProtectHome=true
 PrivateTmp=true
 # Place the DISCORD_BOT_TOKEN= in that file and chmod 400 it.
+# Note: should use LoadCredential= instead as this isn't very secure.
 EnvironmentFile=/home/ubuntu/grol-discord-bot/.dtoken
+Environment=GOMEMLIMIT=1G
 
 [Install]
 WantedBy=multi-user.target
