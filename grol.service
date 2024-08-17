@@ -17,6 +17,14 @@ WorkingDirectory=/home/ubuntu/grol-discord-bot
 ExecStart=/home/ubuntu/go/bin/grol-discord-bot
 Restart=always
 RestartSec=1
+# Security hardening
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateDevices=true
+# ProtectHome=true
+PrivateTmp=true
 # Place the DISCORD_BOT_TOKEN= in that file and chmod 400 it.
 EnvironmentFile=/home/ubuntu/grol-discord-bot/.dtoken
 
