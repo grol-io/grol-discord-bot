@@ -227,13 +227,14 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = RemoveTripleBackticks(input)
 		cfg := repl.Options{
-			All:      true,
-			ShowEval: true,
-			NoColor:  true,
-			Compact:  compactMode,
-			AutoLoad: AutoLoadSave,
-			AutoSave: AutoLoadSave,
-			MaxDepth: *depth,
+			All:         true,
+			ShowEval:    true,
+			NoColor:     true,
+			Compact:     compactMode,
+			AutoLoad:    AutoLoadSave,
+			AutoSave:    AutoLoadSave,
+			MaxDepth:    *depth,
+			MaxValueLen: *maxLen,
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
