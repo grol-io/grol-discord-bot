@@ -257,8 +257,13 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 		}
 		if len(errs) > 0 {
 			res += "```diff"
-			for _, e := range errs {
-				res += "\n- " + e
+			for i, e := range errs {
+				if i >= 2 {
+					n := len(errs) - i
+					res += fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error"))
+					break
+				}
+				res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
 			}
 			res += "\n```"
 		}
