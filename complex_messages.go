@@ -57,8 +57,11 @@ func sendButtonMessage(s *discordgo.Session, channelID string) {
 			},
 		},
 	}
-
-	s.ChannelMessageSendComplex(channelID, message)
+	log.S(log.Info, "Sending button message", log.Any("message", message))
+	_, err := s.ChannelMessageSendComplex(channelID, message)
+	if err != nil {
+		log.Errf("Error sending button message: %v", err)
+	}
 }
 
 func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -101,6 +104,16 @@ func OnInteractionCreate2(s *discordgo.Session, i *discordgo.InteractionCreate) 
 	}
 }
 
+/*
+"Components":[{"Components":{"Label":"Foo","type":2} , "type":1}]
+
+	func discordMessage(chanID){
+		msg = {"Content":"A test...",
+			"Components": [{"ActionsRow": [{"Components": [{"Label": "Option 1"}, {"Label": "Option 2"}]}]}]
+		}
+		ChannelMessageSendComplex(chanID,msg)
+	}
+*/
 func AddGrolCommands(session *discordgo.Session) {
 	cmd := object.Extension{
 		Name:     "ChannelMessageSendComplex",

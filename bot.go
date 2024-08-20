@@ -100,6 +100,10 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
 	}
+	if what == "buttons" {
+		sendButtonMessage(session, message.ChannelID)
+		return
+	}
 	if what == "raw" {
 		what = fmt.Sprintf("discordMessage(%q)", message.ChannelID)
 	}
