@@ -50,6 +50,8 @@ func Run(maxHistoryLength int) {
 	session.AddHandler(updateMessage)
 	session.AddHandler(interactionCreate)
 	session.AddHandler(deleteMessage)
+	session.AddHandler(onInteractionCreate)
+	AddGrolCommands(session)
 
 	// open session
 	err = session.Open()
@@ -97,6 +99,9 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		what = strings.TrimPrefix(message.Content, verbatimModeStr)
 	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
+	}
+	if what == "raw" {
+		what = fmt.Sprintf("discordMessage(%q)", message.ChannelID)
 	}
 	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode, compactMode, verbatimMode)
 	updateMap(message.ID, replyID)
