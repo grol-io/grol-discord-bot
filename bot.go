@@ -247,15 +247,19 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 			res += "\n```go\n" + formatted + "``` produces: "
 		}
 		evalres = strings.TrimSpace(evalres)
-		if evalres != "" {
+		hasErrors := len(errs) > 0
+		if !hasErrors {
+			if evalres == "" {
+				evalres = "nil"
+			}
 			if verbatimMode {
 				return evalres
 			}
-			res += "```go\n" + evalres + "\n```\n"
-		} else {
-			res += "no output.\n"
 		}
-		if len(errs) > 0 {
+		if evalres != "" {
+			res += "```go\n" + evalres + "\n```\n"
+		}
+		if hasErrors {
 			res += "```diff"
 			for i, e := range errs {
 				if i >= 2 {
