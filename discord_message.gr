@@ -1,0 +1,25 @@
+func discordMessage(chanID){
+	msg= {
+	  "content": "A test...",
+	  "components": [
+		{
+		  "type": 1,
+		  "components": [
+			{
+			  "type": 2,
+			  "label": "Option 1",
+			  "style": 1,
+			  "custom_id": "option_1"
+			},
+			{
+			  "type": 2,
+			  "label": "Option 2",
+			  "style": 1,
+			  "custom_id": "option_2"
+			}
+		  ]
+		}
+	  ]
+	}
+	ChannelMessageSendComplex(chanID,msg) // returns the msg id
+}

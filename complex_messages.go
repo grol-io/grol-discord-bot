@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"fortio.org/log"
 	"github.com/bwmarrin/discordgo"
@@ -122,27 +122,26 @@ func AddGrolCommands(session *discordgo.Session) {
 		ArgTypes: []object.Type{object.STRING, object.MAP},
 		Callback: func(_ any, _ string, args []object.Object) object.Object {
 			chID := args[0].(object.String).Value
-			msg := args[1].(object.Map)
-			var buf bytes.Buffer
-			err := msg.JSON(&buf)
-			if err != nil {
-				log.Errf("Error marshalling JSON: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error marshalling JSON: %v", err)}
-			}
-			msgJSON := buf.Bytes()
-			var data *discordgo.MessageSend
-			err = json.Unmarshal(msgJSON, &data)
-			if err != nil {
-				log.Errf("Error unmarshalling JSON %q: %v", msgJSON, err)
-				return object.Error{Value: fmt.Sprintf("Error unmarshalling JSON %q: %v", msgJSON, err)}
-			}
-			_, err = session.ChannelMessageSendComplex(chID, data)
+			msg := args[1].(object.Map).Unwrap(true)
+			log.Debugf("Sending message to channel %s: %v", chID, msg)
+			endpoint := discordgo.EndpointChannelMessages(chID)
+			response, err := session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
 			if err != nil {
 				log.Errf("Error sending message: %v", err)
 				return object.Error{Value: fmt.Sprintf("Error sending message: %v", err)}
 			}
-			return object.NULL
+			var m discordgo.Message
+			err = json.Unmarshal(response, &m)
+			if err != nil {
+				log.Errf("Error unmarshalling message: %v", err)
+				return object.Error{Value: fmt.Sprintf("Error unmarshalling message: %v", err)}
+			}
+			return object.String{Value: m.ID}
 		},
 	}
 	_ = object.CreateFunction(cmd)
 }
+
+/*
+{"content":"A test...","components":[{"type":1,"components":[{"label":"Option 1","type":2},{"label":"Option 2","type":2}]}]}
+*/
