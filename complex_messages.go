@@ -143,5 +143,9 @@ func AddGrolCommands(session *discordgo.Session) {
 }
 
 /*
+Basic working JSON example:
+
 {"content":"A test...","components":[{"type":1,"components":[{"label":"Option 1","type":2},{"label":"Option 2","type":2}]}]}
+
+Now handled functionally in discord_message.gr
 */
