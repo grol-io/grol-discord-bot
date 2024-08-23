@@ -12,6 +12,7 @@ import (
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol-discord-bot/fixedmap"
+	"grol.io/grol/eval"
 	"grol.io/grol/extensions"
 	"grol.io/grol/repl"
 )
@@ -51,7 +52,6 @@ func Run(maxHistoryLength int) {
 	session.AddHandler(interactionCreate)
 	session.AddHandler(deleteMessage)
 	session.AddHandler(onInteractionCreate)
-	AddGrolCommands(session)
 
 	// open session
 	err = session.Open()
@@ -105,9 +105,17 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		return
 	}
 	if what == "raw" {
-		what = fmt.Sprintf("discordMessage(%q)", message.ChannelID)
+		what = "discordMessage()"
 	}
-	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode, compactMode, verbatimMode)
+	p := &CommandParams{
+		session:      session,
+		channelID:    message.ChannelID,
+		replyID:      replyID,
+		formatMode:   formatMode,
+		compactMode:  compactMode,
+		verbatimMode: verbatimMode,
+	}
+	replyID = evalAndReply(session, "dm-reply", what, p)
 	updateMap(message.ID, replyID)
 }
 
@@ -203,7 +211,7 @@ func SmartQuotesToRegular(s string) string {
 }
 
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
-func eval(input string, formatMode, compactMode, verbatimMode bool) string {
+func evalInput(input string, p *CommandParams) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -239,18 +247,27 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 			All:         true,
 			ShowEval:    true,
 			NoColor:     true,
-			Compact:     compactMode,
+			Compact:     p.compactMode,
 			AutoLoad:    AutoLoadSave,
 			AutoSave:    AutoLoadSave,
 			MaxDepth:    *depth,
 			MaxValueLen: *maxLen,
+			PreInput: func(state *eval.State) {
+				st := MessageState{
+					Session:   p.session,
+					ChannelID: p.channelID,
+				}
+				name, fn := ChannelMessageSendComplexFunction(&st)
+				state.Extensions[name] = fn
+			},
+			PanicOk: *panic,
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
-		if (formatMode || compactMode) && formatted != "" {
+		if (p.formatMode || p.compactMode) && formatted != "" {
 			res = formatModeStr
-			if compactMode {
+			if p.compactMode {
 				res = compactModeStr
 			}
 			res += "\n```go\n" + formatted + "``` produces: "
@@ -261,7 +278,7 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 			if evalres == "" {
 				evalres = "nil"
 			}
-			if verbatimMode {
+			if p.verbatimMode {
 				return evalres
 			}
 		}
@@ -287,11 +304,16 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 // Discord's limit - some margin for that adding we are truncating, in characters/runes.
 const MaxMessageLengthInRunes = 2000 - 100
 
+type CommandParams struct {
+	session                               *discordgo.Session
+	channelID                             string
+	replyID                               string
+	formatMode, compactMode, verbatimMode bool
+}
+
 // returns the id of the reply.
-func evalAndReply(session *discordgo.Session, info, channelID, input string,
-	replyID string, formatMode, compactMode, verbatimMode bool,
-) string {
-	res := eval(input, formatMode, compactMode, verbatimMode)
+func evalAndReply(session *discordgo.Session, info, input string, p *CommandParams) string {
+	res := evalInput(input, p)
 	level := log.Info
 	msg := "response"
 	runes := []rune(res)
@@ -302,7 +324,7 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string,
 		msg = "truncated response"
 	}
 	log.S(level, info, log.String(msg, res))
-	return reply(session, channelID, res, replyID)
+	return reply(session, p.channelID, res, p.replyID)
 }
 
 func reply(session *discordgo.Session, channelID, response, replyID string) string {
@@ -391,7 +413,15 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	replyID = evalAndReply(session, "channel-response", message.ChannelID, content, replyID, formatMode, compactMode, verbatimMode)
+	p := &CommandParams{
+		session:      session,
+		channelID:    message.ChannelID,
+		replyID:      replyID,
+		formatMode:   formatMode,
+		compactMode:  compactMode,
+		verbatimMode: verbatimMode,
+	}
+	replyID = evalAndReply(session, "channel-response", content, p)
 	updateMap(message.ID, replyID)
 }
 
@@ -499,7 +529,15 @@ func interactionCreate(session *discordgo.Session, interaction *discordgo.Intera
 			log.Any("channel", channelName),
 			log.Any("content", option))
 		option := option.StringValue()
-		responseMessage := eval(option, false, false, false)
+		p := &CommandParams{
+			session:      session,
+			channelID:    interaction.ChannelID,
+			replyID:      "",
+			formatMode:   false,
+			compactMode:  false,
+			verbatimMode: false,
+		}
+		responseMessage := evalInput(option, p)
 		response := &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{

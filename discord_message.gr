@@ -22,7 +22,7 @@ discord = {
 	},
 }
 
-func discordMessage(chanID){
+func discordMessage(){
 	msg= {
 	  "content": "A test...",
 	  "components":	[discord.actionRow([
@@ -30,5 +30,5 @@ func discordMessage(chanID){
 				discord.button("Option 2", discord.buttonStyle.secondary, "option_2")
 	  ])]
 	}
-	ChannelMessageSendComplex(chanID,msg) // returns the msg id
+	ChannelMessageSendComplex(msg) // returns the msg id
 }

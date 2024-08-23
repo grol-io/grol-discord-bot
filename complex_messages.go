@@ -114,18 +114,35 @@ func OnInteractionCreate2(s *discordgo.Session, i *discordgo.InteractionCreate) 
 		ChannelMessageSendComplex(chanID,msg)
 	}
 */
-func AddGrolCommands(session *discordgo.Session) {
+
+type MessageState struct {
+	Session   *discordgo.Session
+	ChannelID string
+}
+
+const (
+	// ChannelMessageSendComplex is the name of the function
+	ChannelMessageSendComplex = "ChannelMessageSendComplex"
+)
+
+func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extension) {
 	cmd := object.Extension{
-		Name:     "ChannelMessageSendComplex",
-		MinArgs:  2,
-		MaxArgs:  2,
-		ArgTypes: []object.Type{object.STRING, object.MAP},
-		Callback: func(_ any, _ string, args []object.Object) object.Object {
-			chID := args[0].(object.String).Value
-			msg := args[1].(object.Map).Unwrap(true)
+		Name:       ChannelMessageSendComplex,
+		MinArgs:    1,
+		MaxArgs:    1,
+		ArgTypes:   []object.Type{object.MAP},
+		ClientData: st, // Unique to the current interpreter
+		Callback: func(cdata any, _ string, args []object.Object) object.Object {
+			msgContext, ok := cdata.(*MessageState)
+			if !ok {
+				log.Fatalf("Invalid client data type: %T", cdata)
+			}
+			log.Debugf("ChannelMessageSendComplex Message state %+v", msgContext)
+			chID := msgContext.ChannelID
+			msg := args[0].(object.Map).Unwrap(true)
 			log.Debugf("Sending message to channel %s: %v", chID, msg)
 			endpoint := discordgo.EndpointChannelMessages(chID)
-			response, err := session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
+			response, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
 			if err != nil {
 				log.Errf("Error sending message: %v", err)
 				return object.Error{Value: fmt.Sprintf("Error sending message: %v", err)}
@@ -139,7 +156,7 @@ func AddGrolCommands(session *discordgo.Session) {
 			return object.String{Value: m.ID}
 		},
 	}
-	_ = object.CreateFunction(cmd)
+	return cmd.Name, cmd
 }
 
 /*
