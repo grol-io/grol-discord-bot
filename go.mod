@@ -11,7 +11,7 @@ require (
 	grol.io/grol v0.55.0
 )
 
-replace grol.io/grol => ../grol
+// replace grol.io/grol => ../grol
 
 require (
 	fortio.org/dflag v1.7.2 // indirect
