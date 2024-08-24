@@ -1,3 +1,7 @@
+/*
+   Library in grol for discord bot.
+*/
+
 discord = {
 	"actionRow": elems => {
 		{
@@ -32,3 +36,6 @@ func discordMessage(){
 	}
 	ChannelMessageSendComplex(msg) // returns the msg id
 }
+
+ // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
+print("Imported discord grol library ok")

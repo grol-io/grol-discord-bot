@@ -18,8 +18,8 @@ import (
 )
 
 var (
-	BotToken     string
-	AutoLoadSave bool
+	BotToken string
+	AutoSave bool
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
@@ -61,7 +61,17 @@ func Run(maxHistoryLength int) {
 	defer session.Close() // close session, after function termination
 
 	registerCommands(session)
-	log.Infof("Bot is now running with AutoLoadSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoLoadSave)
+
+	// Eval the library and save it.
+	opts := repl.EvalStringOptions()
+	opts.AutoSave = true // force saving the library to compact form even if autosave is off for user messages.
+	res, errs, _ := repl.EvalStringWithOption(opts, libraryCode)
+	if len(errs) > 0 {
+		log.S(log.Critical, "Errors in library eval", log.Any("errors", errs))
+	}
+	log.S(log.Info, "Library eval result", log.String("result", res))
+
+	log.Infof("Bot is now running with AutoSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoSave)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
 }
@@ -240,25 +250,21 @@ func evalInput(input string, p *CommandParams) string {
 		//   look at the result of 1+1
 		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = RemoveTripleBackticks(input)
-		cfg := repl.Options{
-			All:         true,
-			ShowEval:    true,
-			NoColor:     true,
-			Compact:     p.compactMode,
-			AutoLoad:    AutoLoadSave,
-			AutoSave:    AutoLoadSave,
-			MaxDepth:    *depth,
-			MaxValueLen: *maxLen,
-			PreInput: func(state *eval.State) {
-				st := MessageState{
-					Session:   p.session,
-					ChannelID: p.channelID,
-				}
-				name, fn := ChannelMessageSendComplexFunction(&st)
-				state.Extensions[name] = fn
-			},
-			PanicOk: *panicF,
+		cfg := repl.EvalStringOptions()
+		cfg.Compact = p.compactMode
+		cfg.AutoLoad = true
+		cfg.AutoSave = AutoSave
+		cfg.MaxDepth = *depth
+		cfg.MaxValueLen = *maxLen
+		cfg.PreInput = func(state *eval.State) {
+			st := MessageState{
+				Session:   p.session,
+				ChannelID: p.channelID,
+			}
+			name, fn := ChannelMessageSendComplexFunction(&st)
+			state.Extensions[name] = fn
 		}
+		cfg.PanicOk = *panicF
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
