@@ -10,6 +10,7 @@ import (
 	"grol.io/grol/object"
 )
 
+/*
 func sendTicTacToeBoard(s *discordgo.Session, channelID string, board [3][3]string) {
 	components := []discordgo.MessageComponent{}
 	for i := range 3 {
@@ -36,33 +37,7 @@ func sendTicTacToeBoard(s *discordgo.Session, channelID string, board [3][3]stri
 		log.Errf("Error sending board message: %v", err)
 	}
 }
-
-func sendButtonMessage(s *discordgo.Session, channelID string) {
-	message := &discordgo.MessageSend{
-		Content: "Choose an option:",
-		Components: []discordgo.MessageComponent{
-			discordgo.ActionsRow{
-				Components: []discordgo.MessageComponent{
-					discordgo.Button{
-						Label:    "Option 1",
-						Style:    discordgo.PrimaryButton,
-						CustomID: "button_1",
-					},
-					discordgo.Button{
-						Label:    "Option 2",
-						Style:    discordgo.SecondaryButton,
-						CustomID: "button_2",
-					},
-				},
-			},
-		},
-	}
-	log.S(log.Info, "Sending button message", log.Any("message", message))
-	_, err := s.ChannelMessageSendComplex(channelID, message)
-	if err != nil {
-		log.Errf("Error sending button message: %v", err)
-	}
-}
+*/
 
 func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Type == discordgo.InteractionMessageComponent {
@@ -71,63 +46,29 @@ func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		// Update the board state based on the player and re-render the board
 		log.Infof("Button clicked: %s", customID)
 		// Example response:
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseUpdateMessage, // Updates the message with new board state
 			Data: &discordgo.InteractionResponseData{
-				Content:    "Updated Tic-Tac-Toe",
+				Content:    "Clicked " + customID,
 				Components: []discordgo.MessageComponent{
 					// Recreate the updated board here
 				},
 			},
 		})
-	}
-}
-
-func OnInteractionCreate2(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type == discordgo.InteractionMessageComponent {
-		switch i.MessageComponentData().CustomID {
-		case "button_1":
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "You clicked Option 1!",
-				},
-			})
-		case "button_2":
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "You clicked Option 2!",
-				},
-			})
+		if err != nil {
+			log.Errf("Error responding to interaction: %v", err)
 		}
 	}
 }
-
-/*
-"Components":[{"Components":{"Label":"Foo","type":2} , "type":1}]
-
-	func discordMessage(chanID){
-		msg = {"Content":"A test...",
-			"Components": [{"ActionsRow": [{"Components": [{"Label": "Option 1"}, {"Label": "Option 2"}]}]}]
-		}
-		ChannelMessageSendComplex(chanID,msg)
-	}
-*/
 
 type MessageState struct {
 	Session   *discordgo.Session
 	ChannelID string
 }
 
-const (
-	// ChannelMessageSendComplex is the name of the function
-	ChannelMessageSendComplex = "ChannelMessageSendComplex"
-)
-
 func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extension) {
 	cmd := object.Extension{
-		Name:       ChannelMessageSendComplex,
+		Name:       "ChannelMessageSendComplex",
 		MinArgs:    1,
 		MaxArgs:    1,
 		ArgTypes:   []object.Type{object.MAP},

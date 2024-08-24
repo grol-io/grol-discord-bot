@@ -100,10 +100,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
 	}
-	if what == "buttons" {
-		sendButtonMessage(session, message.ChannelID)
-		return
-	}
+	// TODO testing only - remove before merge
 	if what == "raw" {
 		what = "discordMessage()"
 	}
@@ -260,7 +257,7 @@ func evalInput(input string, p *CommandParams) string {
 				name, fn := ChannelMessageSendComplexFunction(&st)
 				state.Extensions[name] = fn
 			},
-			PanicOk: *panic,
+			PanicOk: *panicF,
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)

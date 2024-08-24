@@ -13,7 +13,7 @@ import (
 var (
 	depth  = flag.Int("max-depth", 10000, "Maximum depth of recursion")
 	maxLen = flag.Int("max-save-len", 1000, "Maximum len of saved identifiers, use 0 for unlimited")
-	panic  = flag.Bool("panic", false, "Don't catch panic (DEV only)")
+	panicF = flag.Bool("panic", false, "Don't catch panic (DEV only)")
 )
 
 func main() {
