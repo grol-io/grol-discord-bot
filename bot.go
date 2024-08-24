@@ -96,6 +96,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
+	message.Content = tagToCmd(message.Content, session.State.User.ID)
 	formatMode := strings.HasPrefix(message.Content, formatModeStr)
 	compactMode := strings.HasPrefix(message.Content, compactModeStr)
 	verbatimMode := strings.HasPrefix(message.Content, verbatimModeStr)
@@ -116,6 +117,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	}
 	p := &CommandParams{
 		session:      session,
+		message:      message,
 		channelID:    message.ChannelID,
 		replyID:      replyID,
 		formatMode:   formatMode,
@@ -226,8 +228,8 @@ func evalInput(input string, p *CommandParams) string {
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc...\n\n" +
-			"Either in DM or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode) in a channel, " +
-			"you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
+			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode)" +
+			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
 			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
 			"You can also try the /grol command, answers will be visible only to you!"
 	case "source":
@@ -309,8 +311,9 @@ const MaxMessageLengthInRunes = 2000 - 100
 
 type CommandParams struct {
 	session                               *discordgo.Session
-	channelID                             string
-	replyID                               string
+	message                               *discordgo.Message // Message being replied to/processed.
+	channelID                             string             // shortcut for message.ChannelID.
+	replyID                               string             // If we already replied and have an ID of that reply (to edit it).
 	formatMode, compactMode, verbatimMode bool
 }
 
@@ -327,22 +330,26 @@ func evalAndReply(session *discordgo.Session, info, input string, p *CommandPara
 		msg = "truncated response"
 	}
 	log.S(level, info, log.String(msg, res))
-	return reply(session, p.channelID, res, p.replyID)
+	return reply(session, res, p)
 }
 
-func reply(session *discordgo.Session, channelID, response, replyID string) string {
+func reply(session *discordgo.Session, response string, p *CommandParams) string {
 	var err error
-	if replyID != "" {
-		_, err = session.ChannelMessageEdit(channelID, replyID, response)
+	if p.replyID != "" {
+		_, err = session.ChannelMessageEdit(p.channelID, p.replyID, response)
 	} else {
 		var reply *discordgo.Message
-		reply, err = session.ChannelMessageSend(channelID, response)
-		replyID = reply.ID
+		reply, err = session.ChannelMessageSendReply(p.channelID, response, &discordgo.MessageReference{
+			MessageID: p.message.ID,
+			ChannelID: p.message.ChannelID,
+			GuildID:   p.message.GuildID,
+		})
+		p.replyID = reply.ID
 	}
 	if err != nil {
 		log.S(log.Error, "error", log.Any("err", err))
 	}
-	return replyID
+	return p.replyID
 }
 
 func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
@@ -355,6 +362,10 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 		return
 	}
 	handleMessage(session, message, "")
+}
+
+func tagToCmd(msg, id string) string {
+	return strings.ReplaceAll(msg, "<@"+id+">", "!grol")
 }
 
 func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate, replyID string) {
@@ -381,7 +392,17 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	} else {
 		serverName = server.Name
 	}
-	if !strings.HasPrefix(message.Content, grolPrefix) {
+	info := "channel-message"
+	mentioned := false
+	for _, mention := range message.Mentions {
+		if mention.ID == session.State.User.ID {
+			info = "channel-mention"
+			mentioned = true
+			message.Content = tagToCmd(message.Content, session.State.User.ID)
+			break
+		}
+	}
+	if !mentioned && !strings.HasPrefix(message.Content, grolPrefix) {
 		if replyID != "" {
 			// delete the reply if it's not a grol command anymore
 			log.S(log.Info, "no prefix anymore, deleting previous reply", log.Any("replyID", replyID))
@@ -406,7 +427,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	default:
 		content = message.Content[len(grolPrefix):]
 	}
-	log.S(log.Info, "channel-message",
+	log.S(log.Info, info,
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
@@ -418,6 +439,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	}
 	p := &CommandParams{
 		session:      session,
+		message:      message.Message,
 		channelID:    message.ChannelID,
 		replyID:      replyID,
 		formatMode:   formatMode,
