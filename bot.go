@@ -260,8 +260,9 @@ func evalInput(input string, p *CommandParams) string {
 		cfg.MaxValueLen = *maxLen
 		cfg.PreInput = func(state *eval.State) {
 			st := MessageState{
-				Session:   p.session,
-				ChannelID: p.channelID,
+				Session:          p.session,
+				ChannelID:        p.channelID,
+				TriggerMessageID: p.message.ID,
 			}
 			name, fn := ChannelMessageSendComplexFunction(&st)
 			state.Extensions[name] = fn

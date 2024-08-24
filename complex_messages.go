@@ -62,8 +62,9 @@ func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 }
 
 type MessageState struct {
-	Session   *discordgo.Session
-	ChannelID string
+	Session          *discordgo.Session
+	ChannelID        string
+	TriggerMessageID string
 }
 
 func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extension) {
@@ -80,7 +81,10 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			}
 			log.Debugf("ChannelMessageSendComplex Message state %+v", msgContext)
 			chID := msgContext.ChannelID
-			msg := args[0].(object.Map).Unwrap(true)
+			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
+			ref := make(map[string]string, 1)
+			ref["message_id"] = msgContext.TriggerMessageID
+			msg["message_reference"] = ref
 			log.Debugf("Sending message to channel %s: %v", chID, msg)
 			endpoint := discordgo.EndpointChannelMessages(chID)
 			response, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
