@@ -47,5 +47,36 @@ func discordInteraction(msgId, userId, map) {
 	InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " clicked by <@" + userId + ">"}})
 }
 
+// tic-tac-toe example
+
+// f argument takes the element and the index
+func walk(f, a) {
+	(f,a,i) => {
+		if (len(a)==0) {
+			[]
+		} else {
+			[f(first(a),i)]+self(f,rest(a),i+1)
+		}
+	}(f,a,0)
+}
+
+func sendTicTacToeBoard(board) {
+	components = walk((row,i) => {discord.actionRow(
+					walk((cell,j) => {
+						if cell == "" {
+							cell = "\u200B" // zero width space
+						}
+					discord.button(cell, discord.buttonStyle.secondary, sprintf("cell_%d_%d", i, j))
+				}, row))}, board)
+	msg = {
+		"content":    "Tic-Tac-Toe",
+		"components": components
+	}
+	ChannelMessageSendComplex(msg)
+}
+
+sampleBoard = [["","",""],["","X",""],["","O","X"]]
+
+
 // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
 print("Imported discord grol library ok")

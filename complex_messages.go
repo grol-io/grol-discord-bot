@@ -13,35 +13,6 @@ import (
 	"grol.io/grol/repl"
 )
 
-/*
-func sendTicTacToeBoard(s *discordgo.Session, channelID string, board [3][3]string) {
-	components := []discordgo.MessageComponent{}
-	for i := range 3 {
-		row := discordgo.ActionsRow{}
-		for j := range 3 {
-			label := board[i][j]
-			if label == "" {
-				label = "\u200B" // zero width space
-			}
-			row.Components = append(row.Components, discordgo.Button{
-				Label:    label,
-				Style:    discordgo.SecondaryButton,
-				CustomID: fmt.Sprintf("cell_%d_%d", i, j),
-			})
-		}
-		components = append(components, row)
-	}
-
-	_, err := s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content:    "Tic-Tac-Toe",
-		Components: components,
-	})
-	if err != nil {
-		log.Errf("Error sending board message: %v", err)
-	}
-}
-*/
-
 func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Type != discordgo.InteractionMessageComponent {
 		log.Infof("Ignoring interaction type: %v", i.Type)
