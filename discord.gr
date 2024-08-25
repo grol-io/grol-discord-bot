@@ -61,16 +61,16 @@ func walk(f, a) {
 }
 
 func sendTicTacToeBoard(board) {
-	components = walk((row,i) => {discord.actionRow(
-					walk((cell,j) => {
-						if cell == "" {
-							cell = "\u200B" // zero width space
-						}
-					discord.button(cell, discord.buttonStyle.secondary, sprintf("cell_%d_%d", i, j))
-				}, row))}, board)
+	cmps = walk((row,i) => {discord.actionRow(
+			 walk((cell,j) => {
+				if cell == "" {
+					cell = "\u200B" // zero width space
+				}
+				discord.button(cell, discord.buttonStyle.secondary, sprintf("cell_%d_%d", i, j))
+			 }, row))}, board)
 	msg = {
 		"content":    "Tic-Tac-Toe",
-		"components": components
+		"components": cmps
 	}
 	ChannelMessageSendComplex(msg)
 }
