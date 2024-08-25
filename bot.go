@@ -312,10 +312,12 @@ func evalInput(input string, p *CommandParams) string {
 const MaxMessageLengthInRunes = 2000 - 100
 
 type CommandParams struct {
-	session                                         *discordgo.Session
-	message                                         *discordgo.Message // Message being replied to/processed (). Null for DMs.
-	channelID                                       string             // shortcut for message.ChannelID or id for a DM.
-	replyID                                         string             // If we already replied and have an ID of that reply (to edit it).
+	session   *discordgo.Session
+	message   *discordgo.Message // Message being replied to/processed.
+	channelID string             // shortcut for message.ChannelID or id for a DM.
+	// If we already replied and have an ID of that reply (to edit it).
+	replyID string
+	// Formatting options. useReply selects if we should use reply (in channel) or send (DMs).
 	formatMode, compactMode, verbatimMode, useReply bool
 }
 
