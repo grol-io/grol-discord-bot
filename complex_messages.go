@@ -82,6 +82,7 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			log.Debugf("ChannelMessageSendComplex Message state %+v", msgContext)
 			chID := msgContext.ChannelID
 			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
+			// Make this a reply to identify the origin source (person) of the message.
 			ref := make(map[string]string, 1)
 			ref["message_id"] = msgContext.TriggerMessageID
 			msg["message_reference"] = ref

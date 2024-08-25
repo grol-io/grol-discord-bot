@@ -123,6 +123,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		formatMode:   formatMode,
 		compactMode:  compactMode,
 		verbatimMode: verbatimMode,
+		useReply:     false,
 	}
 	replyID = evalAndReply(session, "dm-reply", what, p)
 	updateMap(message.ID, replyID)
@@ -311,11 +312,11 @@ func evalInput(input string, p *CommandParams) string {
 const MaxMessageLengthInRunes = 2000 - 100
 
 type CommandParams struct {
-	session                               *discordgo.Session
-	message                               *discordgo.Message // Message being replied to/processed.
-	channelID                             string             // shortcut for message.ChannelID.
-	replyID                               string             // If we already replied and have an ID of that reply (to edit it).
-	formatMode, compactMode, verbatimMode bool
+	session                                         *discordgo.Session
+	message                                         *discordgo.Message // Message being replied to/processed (). Null for DMs.
+	channelID                                       string             // shortcut for message.ChannelID or id for a DM.
+	replyID                                         string             // If we already replied and have an ID of that reply (to edit it).
+	formatMode, compactMode, verbatimMode, useReply bool
 }
 
 // returns the id of the reply.
@@ -337,14 +338,25 @@ func evalAndReply(session *discordgo.Session, info, input string, p *CommandPara
 func reply(session *discordgo.Session, response string, p *CommandParams) string {
 	var err error
 	if p.replyID != "" {
+		// Edit of previous message case.
 		_, err = session.ChannelMessageEdit(p.channelID, p.replyID, response)
-	} else {
-		var reply *discordgo.Message
+		if err != nil {
+			log.S(log.Error, "edit-error", log.Any("err", err))
+		}
+		return p.replyID
+	}
+	// New DM or new channel message cases.
+	var reply *discordgo.Message
+	if p.useReply {
 		reply, err = session.ChannelMessageSendReply(p.channelID, response, &discordgo.MessageReference{
 			MessageID: p.message.ID,
 			ChannelID: p.message.ChannelID,
 			GuildID:   p.message.GuildID,
 		})
+	} else {
+		reply, err = session.ChannelMessageSend(p.channelID, response)
+	}
+	if reply != nil {
 		p.replyID = reply.ID
 	}
 	if err != nil {
@@ -362,18 +374,18 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.Author.ID == session.State.User.ID {
 		return
 	}
-	handleMessage(session, message, "")
+	handleMessage(session, message.Message, "")
 }
 
 func tagToCmd(msg, id string) string {
 	return strings.ReplaceAll(msg, "<@"+id+">", "!grol")
 }
 
-func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate, replyID string) {
+func handleMessage(session *discordgo.Session, message *discordgo.Message, replyID string) {
 	isDM := message.GuildID == ""
 	message.Content = strings.TrimSpace(message.Content)
 	if isDM {
-		handleDM(session, message.Message, replyID)
+		handleDM(session, message, replyID)
 		return
 	}
 	// Is this cached/efficient to keep doing?
@@ -440,12 +452,13 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	}
 	p := &CommandParams{
 		session:      session,
-		message:      message.Message,
+		message:      message,
 		channelID:    message.ChannelID,
 		replyID:      replyID,
 		formatMode:   formatMode,
 		compactMode:  compactMode,
 		verbatimMode: verbatimMode,
+		useReply:     true,
 	}
 	replyID = evalAndReply(session, "channel-response", content, p)
 	updateMap(message.ID, replyID)
@@ -465,7 +478,7 @@ func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate)
 		log.Any("id", message.ID),
 		log.Any("reply", reply),
 		log.String("new-content", message.Content))
-	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
+	handleMessage(session, message.Message, reply)
 }
 
 func deleteMessage(session *discordgo.Session, message *discordgo.MessageDelete) {
@@ -479,7 +492,7 @@ func deleteMessage(session *discordgo.Session, message *discordgo.MessageDelete)
 		log.Any("id", message.ID),
 		log.Any("reply", reply),
 		log.Any("before", message.BeforeDelete))
-	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
+	handleMessage(session, message.Message, reply)
 }
 
 func registerCommands(session *discordgo.Session) {
