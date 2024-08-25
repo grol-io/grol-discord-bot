@@ -47,23 +47,21 @@ func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		log.Infof("Ignoring interaction type: %v", i.Type)
 		return
 	}
-	data := i.MessageComponentData()
-	log.S(log.Info, "interaction", log.Any("data", data))
+	log.S(log.Info, "interaction", log.Any("interaction", i))
 	// Call into grol interpreter.
+	data := i.MessageComponentData()
 	json, err := json.Marshal(data)
 	if err != nil {
 		log.Critf("Error marshaling interaction data: %v", err)
 		return
 	}
-	code := fmt.Sprintf("discordInteraction(%s)", json)
+	code := fmt.Sprintf("discordInteraction(%q,%q,%s)", i.Message.ID, i.User.ID, json)
 	log.Infof("Running code: %s", code)
 	cfg := replConfig()
 	cfg.PreInput = func(state *eval.State) {
 		st := MessageState{
-			Session:          s,
-			ChannelID:        i.ChannelID,
-			TriggerMessageID: i.ID,
-			Interaction:      i.Interaction,
+			Session:     s,
+			Interaction: i.Interaction,
 		}
 		name, fn := InteractionRespondFunction(&st)
 		state.Extensions[name] = fn

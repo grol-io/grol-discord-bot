@@ -41,9 +41,10 @@ func discordExampleMessage(){
 	// error("error test")
 }
 
-func discordInteraction(map) {
+// Just an example, real code should dispatch based on the id etc.
+func discordInteraction(msgId, userId, map) {
 	clicked = map.custom_id
-	InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " clicked"}})
+	InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " clicked by <@" + userId + ">"}})
 }
 
 // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
