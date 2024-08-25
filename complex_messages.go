@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -26,7 +25,9 @@ func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		log.Critf("Error marshaling interaction data: %v", err)
 		return
 	}
-	code := fmt.Sprintf("discordInteraction(%q,%q,%s)", i.Message.ID, i.User.ID, json)
+	// Key state of the message ID.
+	code := fmt.Sprintf("state = state + {%q: discordInteraction(state[%q],%q,%q,%s)}",
+		i.Message.ID, i.Message.ID, i.Message.ID, i.User.ID, json)
 	log.Infof("Running code: %s", code)
 	cfg := replConfig()
 	cfg.PreInput = func(state *eval.State) {
@@ -70,19 +71,12 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 				log.Fatalf("Invalid client data type: %T", cdata)
 			}
 			log.Debugf("InteractionRespond Message state %+v", msgContext)
-			var resp discordgo.InteractionResponse
-			var buf bytes.Buffer
-			_ = args[0].JSON(&buf)
-			err := json.Unmarshal(buf.Bytes(), &resp)
+			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
+			endpoint := discordgo.EndpointInteractionResponse(msgContext.Interaction.ID, msgContext.Interaction.Token)
+			_, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
 			if err != nil {
-				log.Errf("Error unmarshalling interaction response: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error unmarshalling interaction response: %v", err)}
-			}
-			log.Infof("Sending interaction response: %+v", resp)
-			err = msgContext.Session.InteractionRespond(msgContext.Interaction, &resp)
-			if err != nil {
-				log.Errf("Error sending message: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error in interaction response: %v", err)}
+				log.Errf("Error sending interaction response: %v", err)
+				return object.Error{Value: fmt.Sprintf("Error sending interaction response: %v", err)}
 			}
 			return object.NULL
 		},
@@ -134,5 +128,5 @@ Basic working JSON example:
 
 {"content":"A test...","components":[{"type":1,"components":[{"label":"Option 1","type":2},{"label":"Option 2","type":2}]}]}
 
-Now handled functionally in discord_message.gr
+Now handled in discord.gr
 */

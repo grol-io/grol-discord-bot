@@ -41,13 +41,54 @@ func discordExampleMessage(){
 	// error("error test")
 }
 
-// Just an example, real code should dispatch based on the id etc.
-func discordInteraction(msgId, userId, map) {
-	clicked = map.custom_id
-	InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " clicked by <@" + userId + ">"}})
+// Copy matrix with 1 cell changed
+func assign(a, i, j, v) {
+	walk((row,ii) => {
+		if ii != i {
+			return row
+		}
+		walk((cell,jj) => {
+			if jj == j {
+				v
+			} else {
+				cell
+			}
+		}, row)
+	}, a)
 }
 
 // tic-tac-toe example
+
+func discordInteraction(state, msgId, userId, map) {
+	if state == nil {
+		state = {
+			"board": newTicTacToeBoard(),
+			"next": "X"
+		}
+	}
+	clicked = map.custom_id
+	eval(clicked) // defines i and j
+	current = state.board[i][j] // workaround for now for https://github.com/grol-io/grol/issues/179
+	if current != "" {
+		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": "Already clicked " + clicked}})
+		return state
+	}
+	state =  state + {"board": assign(state.board, i, j, state.next)}
+	current = state.next
+	if current == "X" {
+		next = "O"
+	} else {
+		next = "X"
+	}
+	state = state + {"next": next}
+	InteractionRespond({
+		"type": discord.interaction.update_message,
+		"data": {"content": clicked + " clicked by <@" + userId + ">", "components": ticTacToeBoardToComponents(state.board)}
+	})
+	state
+}
+
+state = {}
 
 // f argument takes the element and the index
 func walk(f, a) {
@@ -60,19 +101,30 @@ func walk(f, a) {
 	}(f,a,0)
 }
 
+func ticTacToeBoardToComponents(board) {
+	walk((row,i) => {discord.actionRow(
+		walk((cell,j) => {
+		   if cell == "" {
+			   cell = "\u200B" // zero width space
+		   }
+		   discord.button(cell, discord.buttonStyle.secondary, sprintf("i=%d j=%d", i, j))
+		}, row))}, board)
+}
+
 func sendTicTacToeBoard(board) {
-	cmps = walk((row,i) => {discord.actionRow(
-			 walk((cell,j) => {
-				if cell == "" {
-					cell = "\u200B" // zero width space
-				}
-				discord.button(cell, discord.buttonStyle.secondary, sprintf("cell_%d_%d", i, j))
-			 }, row))}, board)
 	msg = {
 		"content":    "Tic-Tac-Toe",
-		"components": cmps
+		"components": ticTacToeBoardToComponents(board)
 	}
 	ChannelMessageSendComplex(msg)
+}
+
+func newTicTacToeBoard() {
+	[["","",""],["","",""],["","",""]]
+}
+
+func TicTacToe() {
+	sendTicTacToeBoard(newTicTacToeBoard())
 }
 
 sampleBoard = [["","",""],["","X",""],["","O","X"]]
