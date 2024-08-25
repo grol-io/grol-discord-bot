@@ -280,8 +280,8 @@ func evalInput(input string, p *CommandParams) string {
 			res += "\n```go\n" + formatted + "``` produces: "
 		}
 		evalres = strings.TrimSpace(evalres)
-		hasErrors := len(errs) > 0
-		if !hasErrors {
+		p.hasErrors = len(errs) > 0
+		if !p.hasErrors {
 			if evalres == "" {
 				evalres = "nil"
 			}
@@ -292,7 +292,7 @@ func evalInput(input string, p *CommandParams) string {
 		if evalres != "" {
 			res += "```go\n" + evalres + "\n```\n"
 		}
-		if hasErrors {
+		if p.hasErrors {
 			res += "```diff"
 			for i, e := range errs {
 				if i >= 2 {
@@ -318,7 +318,7 @@ type CommandParams struct {
 	// If we already replied and have an ID of that reply (to edit it).
 	replyID string
 	// Formatting options. useReply selects if we should use reply (in channel) or send (DMs).
-	formatMode, compactMode, verbatimMode, useReply bool
+	formatMode, compactMode, verbatimMode, useReply, hasErrors bool
 }
 
 // returns the id of the reply.
@@ -339,7 +339,15 @@ func evalAndReply(session *discordgo.Session, info, input string, p *CommandPara
 
 func reply(session *discordgo.Session, response string, p *CommandParams) string {
 	var err error
-	if p.replyID != "" {
+	useEdit := p.replyID != ""
+	if !useEdit && !p.hasErrors { // if there was an error despite the previous interaction, do a reply anyway.
+		reply, found := msgSet.Get(p.message.ID)
+		if found {
+			log.S(log.Info, "Found previous reply (interaction) skipping reply", log.Any("reply", reply), log.Any("response", response))
+			return reply
+		}
+	}
+	if useEdit {
 		// Edit of previous message case.
 		_, err = session.ChannelMessageEdit(p.channelID, p.replyID, response)
 		if err != nil {

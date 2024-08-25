@@ -35,6 +35,7 @@ func discordMessage(){
 	  ])]
 	}
 	ChannelMessageSendComplex(msg) // returns the msg id
+	// error("error test")
 }
 
  // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.

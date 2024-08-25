@@ -99,6 +99,7 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 				log.Errf("Error unmarshalling message: %v", err)
 				return object.Error{Value: fmt.Sprintf("Error unmarshalling message: %v", err)}
 			}
+			updateMap(msgContext.TriggerMessageID, m.ID)
 			return object.String{Value: m.ID}
 		},
 	}
