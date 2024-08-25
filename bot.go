@@ -111,10 +111,6 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
 	}
-	// TODO testing only - remove before merge
-	if what == "raw" {
-		what = "discordMessage()"
-	}
 	p := &CommandParams{
 		session:      session,
 		message:      message,
@@ -220,6 +216,16 @@ func SmartQuotesToRegular(s string) string {
 	return string(buf)
 }
 
+func replConfig() repl.Options {
+	cfg := repl.EvalStringOptions()
+	cfg.AutoLoad = true
+	cfg.AutoSave = AutoSave
+	cfg.MaxDepth = *depth
+	cfg.MaxValueLen = *maxLen
+	cfg.PanicOk = *panicF
+	return cfg
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
 func evalInput(input string, p *CommandParams) string {
 	var res string
@@ -253,12 +259,8 @@ func evalInput(input string, p *CommandParams) string {
 		//   look at the result of 1+1
 		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = RemoveTripleBackticks(input)
-		cfg := repl.EvalStringOptions()
+		cfg := replConfig()
 		cfg.Compact = p.compactMode
-		cfg.AutoLoad = true
-		cfg.AutoSave = AutoSave
-		cfg.MaxDepth = *depth
-		cfg.MaxValueLen = *maxLen
 		cfg.PreInput = func(state *eval.State) {
 			st := MessageState{
 				Session:          p.session,
@@ -268,7 +270,6 @@ func evalInput(input string, p *CommandParams) string {
 			name, fn := ChannelMessageSendComplexFunction(&st)
 			state.Extensions[name] = fn
 		}
-		cfg.PanicOk = *panicF
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
@@ -293,18 +294,23 @@ func evalInput(input string, p *CommandParams) string {
 			res += "```go\n" + evalres + "\n```\n"
 		}
 		if p.hasErrors {
-			res += "```diff"
-			for i, e := range errs {
-				if i >= 2 {
-					n := len(errs) - i
-					res += fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error"))
-					break
-				}
-				res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
-			}
-			res += "\n```"
+			res += errorsBlock(errs)
 		}
 	}
+	return res
+}
+
+func errorsBlock(errs []string) string {
+	res := "```diff"
+	for i, e := range errs {
+		if i >= 2 {
+			n := len(errs) - i
+			res += fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error"))
+			break
+		}
+		res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
+	}
+	res += "\n```"
 	return res
 }
 

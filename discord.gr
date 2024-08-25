@@ -24,9 +24,12 @@ discord = {
 		"danger": 4,
 		"link": 5
 	},
+	"interaction" : {
+		"update_message" : 7
+	}
 }
 
-func discordMessage(){
+func discordExampleMessage(){
 	msg= {
 	  "content": "A test...",
 	  "components":	[discord.actionRow([
@@ -38,5 +41,10 @@ func discordMessage(){
 	// error("error test")
 }
 
- // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
+func discordInteraction(map) {
+	clicked = map.custom_id
+	InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " clicked"}})
+}
+
+// Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
 print("Imported discord grol library ok")

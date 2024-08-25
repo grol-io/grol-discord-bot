@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"fortio.org/log"
 	"github.com/bwmarrin/discordgo"
+	"grol.io/grol/eval"
 	"grol.io/grol/object"
+	"grol.io/grol/repl"
 )
 
 /*
@@ -40,24 +43,40 @@ func sendTicTacToeBoard(s *discordgo.Session, channelID string, board [3][3]stri
 */
 
 func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type == discordgo.InteractionMessageComponent {
-		customID := i.MessageComponentData().CustomID
-		// Parse the customID to figure out which cell was clicked, e.g., "cell_0_1"
-		// Update the board state based on the player and re-render the board
-		log.Infof("Button clicked: %s", customID)
-		// Example response:
-		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseUpdateMessage, // Updates the message with new board state
-			Data: &discordgo.InteractionResponseData{
-				Content:    "Clicked " + customID,
-				Components: []discordgo.MessageComponent{
-					// Recreate the updated board here
-				},
-			},
-		})
-		if err != nil {
-			log.Errf("Error responding to interaction: %v", err)
+	if i.Type != discordgo.InteractionMessageComponent {
+		log.Infof("Ignoring interaction type: %v", i.Type)
+		return
+	}
+	data := i.MessageComponentData()
+	log.S(log.Info, "interaction", log.Any("data", data))
+	// Call into grol interpreter.
+	json, err := json.Marshal(data)
+	if err != nil {
+		log.Critf("Error marshaling interaction data: %v", err)
+		return
+	}
+	code := fmt.Sprintf("discordInteraction(%s)", json)
+	log.Infof("Running code: %s", code)
+	cfg := replConfig()
+	cfg.PreInput = func(state *eval.State) {
+		st := MessageState{
+			Session:          s,
+			ChannelID:        i.ChannelID,
+			TriggerMessageID: i.ID,
+			Interaction:      i.Interaction,
 		}
+		name, fn := InteractionRespondFunction(&st)
+		state.Extensions[name] = fn
+	}
+	res, errs, _ := repl.EvalStringWithOption(cfg, code)
+	log.Infof("Interaction (ignored) result: %q errs %v", res, errs)
+	if len(errs) > 0 {
+		p := &CommandParams{
+			session:   s,
+			message:   i.Message,
+			channelID: i.ChannelID,
+		}
+		reply(s, errorsBlock(errs), p)
 	}
 }
 
@@ -65,6 +84,41 @@ type MessageState struct {
 	Session          *discordgo.Session
 	ChannelID        string
 	TriggerMessageID string
+	// for interaction responses
+	Interaction *discordgo.Interaction
+}
+
+func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
+	cmd := object.Extension{
+		Name:       "InteractionRespond",
+		MinArgs:    1,
+		MaxArgs:    1,
+		ArgTypes:   []object.Type{object.MAP},
+		ClientData: st, // Unique to the current interpreter
+		Callback: func(cdata any, _ string, args []object.Object) object.Object {
+			msgContext, ok := cdata.(*MessageState)
+			if !ok {
+				log.Fatalf("Invalid client data type: %T", cdata)
+			}
+			log.Debugf("InteractionRespond Message state %+v", msgContext)
+			var resp discordgo.InteractionResponse
+			var buf bytes.Buffer
+			_ = args[0].JSON(&buf)
+			err := json.Unmarshal(buf.Bytes(), &resp)
+			if err != nil {
+				log.Errf("Error unmarshalling interaction response: %v", err)
+				return object.Error{Value: fmt.Sprintf("Error unmarshalling interaction response: %v", err)}
+			}
+			log.Infof("Sending interaction response: %+v", resp)
+			err = msgContext.Session.InteractionRespond(msgContext.Interaction, &resp)
+			if err != nil {
+				log.Errf("Error sending message: %v", err)
+				return object.Error{Value: fmt.Sprintf("Error in interaction response: %v", err)}
+			}
+			return object.NULL
+		},
+	}
+	return cmd.Name, cmd
 }
 
 func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extension) {
