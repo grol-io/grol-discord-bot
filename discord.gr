@@ -71,7 +71,7 @@ func discordInteraction(state, msgId, userId, map) {
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {"content": "<@" + userId + "> has reset the board", "components": ticTacToeBoardToComponents(newTicTacToeBoard(),-1,-1)}})
-		return {}
+		return nil // clear state
 	}
 	pair = split(clicked, ",")
 	i=int(pair[0])-1
