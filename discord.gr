@@ -41,25 +41,8 @@ func discordExampleMessage(){
 	// error("error test")
 }
 
-// Copy matrix with 1 cell changed
-func assign(a, i, j, v) {
-	walk((row,ii) => {
-		if ii != i {
-			return row
-		}
-		walk((cell,jj) => {
-			if jj == j {
-				v
-			} else {
-				cell
-			}
-		}, row)
-	}, a)
-}
-
 // tic-tac-toe example
-
-func discordInteraction(state, msgId, userId, map) {
+func discordInteraction(state, userId, map) {
 	if state == nil {
 		state = {
 			"board": newTicTacToeBoard(),
@@ -80,13 +63,16 @@ func discordInteraction(state, msgId, userId, map) {
 		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied"}})
 		return state
 	}
-	state =  state + {"board": assign(state.board, i, j, state.next)}
+	board = state.board
+	row = board[i]
+	row[j] = state.next
+	board[i] = row
+	state.board = board
 	if state.next == "X" {
-		next = "O"
+		state.next = "O"
 	} else {
-		next = "X"
+		state.next = "X"
 	}
-	state = state + {"next": next}
 	InteractionRespond({
 		"type": discord.interaction.update_message,
 		"data": {"content": "<@" + userId + "> played " + clicked, "components": ticTacToeBoardToComponents(state.board,i,j)}

@@ -32,8 +32,7 @@ func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	} else {
 		userID = i.User.ID
 	}
-	code := fmt.Sprintf("res = discordInteraction(state[%q],%q,%q,%s); state = state + {%q: res}",
-		i.Message.ID, i.Message.ID, userID, json, i.Message.ID)
+	code := fmt.Sprintf("state[%q] = discordInteraction(state[%q],%q,%s)", i.Message.ID, i.Message.ID, userID, json)
 	log.Infof("Running code: %s", code)
 	cfg := replConfig()
 	cfg.PreInput = func(state *eval.State) {
