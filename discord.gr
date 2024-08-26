@@ -67,15 +67,21 @@ func discordInteraction(state, msgId, userId, map) {
 		}
 	}
 	clicked = map.custom_id
-	eval(clicked) // defines i and j
-	current = state.board[i][j] // workaround for now for https://github.com/grol-io/grol/issues/179
-	if current != "" {
-		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": "Already clicked " + clicked}})
+	if clicked == "reset" {
+		InteractionRespond({
+			"type": discord.interaction.update_message,
+			"data": {"content": "<@" + userId + "> has reset the board", "components": ticTacToeBoardToComponents(newTicTacToeBoard(),-1,-1)}})
+		return {}
+	}
+	pair = split(clicked, ",")
+	i=int(pair[0])-1
+	j=int(pair[1])-1
+	if state.board[i][j] != "" {
+		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied"}})
 		return state
 	}
 	state =  state + {"board": assign(state.board, i, j, state.next)}
-	current = state.next
-	if current == "X" {
+	if state.next == "X" {
 		next = "O"
 	} else {
 		next = "X"
@@ -83,7 +89,7 @@ func discordInteraction(state, msgId, userId, map) {
 	state = state + {"next": next}
 	InteractionRespond({
 		"type": discord.interaction.update_message,
-		"data": {"content": clicked + " clicked by <@" + userId + ">", "components": ticTacToeBoardToComponents(state.board)}
+		"data": {"content": "<@" + userId + "> played " + clicked, "components": ticTacToeBoardToComponents(state.board,i,j)}
 	})
 	state
 }
@@ -101,20 +107,24 @@ func walk(f, a) {
 	}(f,a,0)
 }
 
-func ticTacToeBoardToComponents(board) {
+func ticTacToeBoardToComponents(board, hi, hj) {
 	walk((row,i) => {discord.actionRow(
 		walk((cell,j) => {
 		   if cell == "" {
 			   cell = "\u200B" // zero width space
 		   }
-		   discord.button(cell, discord.buttonStyle.secondary, sprintf("i=%d j=%d", i, j))
-		}, row))}, board)
+		   style = discord.buttonStyle.secondary
+		   if i == hi && j == hj {
+			   style = discord.buttonStyle.primary
+		   }
+		   discord.button(cell, style, sprintf("%d,%d", i+1, j+1))
+		}, row))}, board) + [discord.actionRow([discord.button("Reset", discord.buttonStyle.danger, "reset")])]
 }
 
 func sendTicTacToeBoard(board) {
 	msg = {
 		"content":    "Tic-Tac-Toe",
-		"components": ticTacToeBoardToComponents(board)
+		"components": ticTacToeBoardToComponents(board, -1, -1)
 	}
 	ChannelMessageSendComplex(msg)
 }
