@@ -1,0 +1,130 @@
+/*
+   Library in grol for discord bot.
+*/
+
+discord = {
+	"actionRow": elems => {
+		{
+		"type": 1,
+		"components": elems
+		}
+	},
+	"button": (label, style, custom_id) => {
+		{
+			"type": 2,
+			"label": label,
+			"style": style,
+			"custom_id": custom_id
+		}
+	},
+	"buttonStyle" : {
+		"primary": 1,
+		"secondary": 2,
+		"success": 3,
+		"danger": 4,
+		"link": 5
+	},
+	"interaction" : {
+		"update_message" : 7
+	}
+}
+
+func discordExampleMessage(){
+	msg= {
+	  "content": "A test...",
+	  "components":	[discord.actionRow([
+				discord.button("Option 1", discord.buttonStyle.primary, "option_1"),
+				discord.button("Option 2", discord.buttonStyle.secondary, "option_2")
+	  ])]
+	}
+	ChannelMessageSendComplex(msg) // returns the msg id
+	// error("error test")
+}
+
+// tic-tac-toe example
+func discordInteraction(state, userId, map) {
+	if state == nil {
+		state = {
+			"board": newTicTacToeBoard(),
+			"next": "X"
+		}
+	}
+	clicked = map.custom_id
+	if clicked == "reset" {
+		InteractionRespond({
+			"type": discord.interaction.update_message,
+			"data": {"content": "<@" + userId + "> has reset the board", "components": ticTacToeBoardToComponents(newTicTacToeBoard(),-1,-1)}})
+		return nil // clear state
+	}
+	pair = split(clicked, ",")
+	i=int(pair[0])-1
+	j=int(pair[1])-1
+	if state.board[i][j] != "" {
+		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied"}})
+		return state
+	}
+	board = state.board
+	row = board[i]
+	row[j] = state.next
+	board[i] = row
+	state.board = board
+	if state.next == "X" {
+		state.next = "O"
+	} else {
+		state.next = "X"
+	}
+	InteractionRespond({
+		"type": discord.interaction.update_message,
+		"data": {"content": "<@" + userId + "> played " + clicked, "components": ticTacToeBoardToComponents(state.board,i,j)}
+	})
+	state
+}
+
+state = {}
+
+// f argument takes the element and the index
+func walk(f, a) {
+	(f,a,i) => {
+		if (len(a)==0) {
+			[]
+		} else {
+			[f(first(a),i)]+self(f,rest(a),i+1)
+		}
+	}(f,a,0)
+}
+
+func ticTacToeBoardToComponents(board, hi, hj) {
+	walk((row,i) => {discord.actionRow(
+		walk((cell,j) => {
+		   if cell == "" {
+			   cell = "\u200B" // zero width space
+		   }
+		   style = discord.buttonStyle.secondary
+		   if i == hi && j == hj {
+			   style = discord.buttonStyle.primary
+		   }
+		   discord.button(cell, style, sprintf("%d,%d", i+1, j+1))
+		}, row))}, board) + [discord.actionRow([discord.button("Reset", discord.buttonStyle.danger, "reset")])]
+}
+
+func sendTicTacToeBoard(board) {
+	msg = {
+		"content":    "Tic-Tac-Toe",
+		"components": ticTacToeBoardToComponents(board, -1, -1)
+	}
+	ChannelMessageSendComplex(msg)
+}
+
+func newTicTacToeBoard() {
+	[["","",""],["","",""],["","",""]]
+}
+
+func TicTacToe() {
+	sendTicTacToeBoard(newTicTacToeBoard())
+}
+
+sampleBoard = [["","",""],["","X",""],["","O","X"]]
+
+
+// Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
+print("Imported discord grol library ok")

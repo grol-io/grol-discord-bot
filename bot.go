@@ -12,13 +12,14 @@ import (
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol-discord-bot/fixedmap"
+	"grol.io/grol/eval"
 	"grol.io/grol/extensions"
 	"grol.io/grol/repl"
 )
 
 var (
-	BotToken     string
-	AutoLoadSave bool
+	BotToken string
+	AutoSave bool
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
@@ -50,6 +51,7 @@ func Run(maxHistoryLength int) {
 	session.AddHandler(updateMessage)
 	session.AddHandler(interactionCreate)
 	session.AddHandler(deleteMessage)
+	session.AddHandler(onInteractionCreate)
 
 	// open session
 	err = session.Open()
@@ -59,7 +61,17 @@ func Run(maxHistoryLength int) {
 	defer session.Close() // close session, after function termination
 
 	registerCommands(session)
-	log.Infof("Bot is now running with AutoLoadSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoLoadSave)
+
+	// Eval the library and save it.
+	opts := repl.EvalStringOptions()
+	opts.AutoSave = true // force saving the library to compact form even if autosave is off for user messages.
+	res, errs, _ := repl.EvalStringWithOption(opts, libraryCode)
+	if len(errs) > 0 {
+		log.S(log.Critical, "Errors in library eval", log.Any("errors", errs))
+	}
+	log.S(log.Info, "Library eval result", log.String("result", res))
+
+	log.Infof("Bot is now running with AutoSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoSave)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
 }
@@ -84,6 +96,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
+	message.Content = tagToCmd(message.Content, session.State.User.ID)
 	formatMode := strings.HasPrefix(message.Content, formatModeStr)
 	compactMode := strings.HasPrefix(message.Content, compactModeStr)
 	verbatimMode := strings.HasPrefix(message.Content, verbatimModeStr)
@@ -98,7 +111,17 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 	default:
 		what = strings.TrimPrefix(message.Content, grolPrefix)
 	}
-	replyID = evalAndReply(session, "dm-reply", message.ChannelID, what, replyID, formatMode, compactMode, verbatimMode)
+	p := &CommandParams{
+		session:      session,
+		message:      message,
+		channelID:    message.ChannelID,
+		replyID:      replyID,
+		formatMode:   formatMode,
+		compactMode:  compactMode,
+		verbatimMode: verbatimMode,
+		useReply:     false,
+	}
+	replyID = evalAndReply(session, "dm-reply", what, p)
 	updateMap(message.ID, replyID)
 }
 
@@ -193,8 +216,18 @@ func SmartQuotesToRegular(s string) string {
 	return string(buf)
 }
 
+func replConfig() repl.Options {
+	cfg := repl.EvalStringOptions()
+	cfg.AutoLoad = true
+	cfg.AutoSave = AutoSave
+	cfg.MaxDepth = *depth
+	cfg.MaxValueLen = *maxLen
+	cfg.PanicOk = *panicF
+	return cfg
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
-func eval(input string, formatMode, compactMode, verbatimMode bool) string {
+func evalInput(input string, p *CommandParams) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	switch input {
@@ -202,8 +235,8 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc...\n\n" +
-			"Either in DM or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode) in a channel, " +
-			"you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
+			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode)" +
+			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
 			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
 			"You can also try the /grol command, answers will be visible only to you!"
 	case "source":
@@ -226,63 +259,77 @@ func eval(input string, formatMode, compactMode, verbatimMode bool) string {
 		//   look at the result of 1+1
 		// in a single message and not get errors on the extra text (meanwhile, add //).
 		input = RemoveTripleBackticks(input)
-		cfg := repl.Options{
-			All:         true,
-			ShowEval:    true,
-			NoColor:     true,
-			Compact:     compactMode,
-			AutoLoad:    AutoLoadSave,
-			AutoSave:    AutoLoadSave,
-			MaxDepth:    *depth,
-			MaxValueLen: *maxLen,
+		cfg := replConfig()
+		cfg.Compact = p.compactMode
+		cfg.PreInput = func(state *eval.State) {
+			st := MessageState{
+				Session:          p.session,
+				ChannelID:        p.channelID,
+				TriggerMessageID: p.message.ID,
+			}
+			name, fn := ChannelMessageSendComplexFunction(&st)
+			state.Extensions[name] = fn
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
-		if (formatMode || compactMode) && formatted != "" {
+		if (p.formatMode || p.compactMode) && formatted != "" {
 			res = formatModeStr
-			if compactMode {
+			if p.compactMode {
 				res = compactModeStr
 			}
 			res += "\n```go\n" + formatted + "``` produces: "
 		}
 		evalres = strings.TrimSpace(evalres)
-		hasErrors := len(errs) > 0
-		if !hasErrors {
+		p.hasErrors = len(errs) > 0
+		if !p.hasErrors {
 			if evalres == "" {
 				evalres = "nil"
 			}
-			if verbatimMode {
+			if p.verbatimMode {
 				return evalres
 			}
 		}
 		if evalres != "" {
 			res += "```go\n" + evalres + "\n```\n"
 		}
-		if hasErrors {
-			res += "```diff"
-			for i, e := range errs {
-				if i >= 2 {
-					n := len(errs) - i
-					res += fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error"))
-					break
-				}
-				res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
-			}
-			res += "\n```"
+		if p.hasErrors {
+			res += errorsBlock(errs)
 		}
 	}
+	return res
+}
+
+func errorsBlock(errs []string) string {
+	res := "```diff"
+	for i, e := range errs {
+		if i >= 2 {
+			n := len(errs) - i
+			res += fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error"))
+			break
+		}
+		res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
+	}
+	res += "\n```"
 	return res
 }
 
 // Discord's limit - some margin for that adding we are truncating, in characters/runes.
 const MaxMessageLengthInRunes = 2000 - 100
 
+type CommandParams struct {
+	session   *discordgo.Session
+	message   *discordgo.Message // Message being replied to/processed.
+	channelID string             // shortcut for message.ChannelID or id for a DM.
+	// If we already replied and have an ID of that reply (to edit it).
+	replyID string
+	// Formatting options. useReply selects if we should use reply (in channel) or send (DMs).
+	formatMode, compactMode, verbatimMode, useReply, hasErrors bool
+}
+
 // returns the id of the reply.
-func evalAndReply(session *discordgo.Session, info, channelID, input string,
-	replyID string, formatMode, compactMode, verbatimMode bool,
-) string {
-	res := eval(input, formatMode, compactMode, verbatimMode)
+func evalAndReply(session *discordgo.Session, info, input string, p *CommandParams) string {
+	res := evalInput(input, p)
 	level := log.Info
 	msg := "response"
 	runes := []rune(res)
@@ -293,22 +340,45 @@ func evalAndReply(session *discordgo.Session, info, channelID, input string,
 		msg = "truncated response"
 	}
 	log.S(level, info, log.String(msg, res))
-	return reply(session, channelID, res, replyID)
+	return reply(session, res, p)
 }
 
-func reply(session *discordgo.Session, channelID, response, replyID string) string {
+func reply(session *discordgo.Session, response string, p *CommandParams) string {
 	var err error
-	if replyID != "" {
-		_, err = session.ChannelMessageEdit(channelID, replyID, response)
+	useEdit := p.replyID != ""
+	if !useEdit && !p.hasErrors { // if there was an error despite the previous interaction, do a reply anyway.
+		reply, found := msgSet.Get(p.message.ID)
+		if found {
+			log.S(log.Info, "Found previous reply (interaction) skipping reply", log.Any("reply", reply), log.Any("response", response))
+			return reply
+		}
+	}
+	if useEdit {
+		// Edit of previous message case.
+		_, err = session.ChannelMessageEdit(p.channelID, p.replyID, response)
+		if err != nil {
+			log.S(log.Error, "edit-error", log.Any("err", err))
+		}
+		return p.replyID
+	}
+	// New DM or new channel message cases.
+	var reply *discordgo.Message
+	if p.useReply {
+		reply, err = session.ChannelMessageSendReply(p.channelID, response, &discordgo.MessageReference{
+			MessageID: p.message.ID,
+			ChannelID: p.message.ChannelID,
+			GuildID:   p.message.GuildID,
+		})
 	} else {
-		var reply *discordgo.Message
-		reply, err = session.ChannelMessageSend(channelID, response)
-		replyID = reply.ID
+		reply, err = session.ChannelMessageSend(p.channelID, response)
+	}
+	if reply != nil {
+		p.replyID = reply.ID
 	}
 	if err != nil {
 		log.S(log.Error, "error", log.Any("err", err))
 	}
-	return replyID
+	return p.replyID
 }
 
 func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
@@ -320,14 +390,18 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.Author.ID == session.State.User.ID {
 		return
 	}
-	handleMessage(session, message, "")
+	handleMessage(session, message.Message, "")
 }
 
-func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate, replyID string) {
+func tagToCmd(msg, id string) string {
+	return strings.ReplaceAll(msg, "<@"+id+">", "!grol")
+}
+
+func handleMessage(session *discordgo.Session, message *discordgo.Message, replyID string) {
 	isDM := message.GuildID == ""
 	message.Content = strings.TrimSpace(message.Content)
 	if isDM {
-		handleDM(session, message.Message, replyID)
+		handleDM(session, message, replyID)
 		return
 	}
 	// Is this cached/efficient to keep doing?
@@ -347,7 +421,17 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	} else {
 		serverName = server.Name
 	}
-	if !strings.HasPrefix(message.Content, grolPrefix) {
+	info := "channel-message"
+	mentioned := false
+	for _, mention := range message.Mentions {
+		if mention.ID == session.State.User.ID {
+			info = "channel-mention"
+			mentioned = true
+			message.Content = tagToCmd(message.Content, session.State.User.ID)
+			break
+		}
+	}
+	if !mentioned && !strings.HasPrefix(message.Content, grolPrefix) {
 		if replyID != "" {
 			// delete the reply if it's not a grol command anymore
 			log.S(log.Info, "no prefix anymore, deleting previous reply", log.Any("replyID", replyID))
@@ -372,7 +456,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 	default:
 		content = message.Content[len(grolPrefix):]
 	}
-	log.S(log.Info, "channel-message",
+	log.S(log.Info, info,
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
@@ -382,7 +466,17 @@ func handleMessage(session *discordgo.Session, message *discordgo.MessageCreate,
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	replyID = evalAndReply(session, "channel-response", message.ChannelID, content, replyID, formatMode, compactMode, verbatimMode)
+	p := &CommandParams{
+		session:      session,
+		message:      message,
+		channelID:    message.ChannelID,
+		replyID:      replyID,
+		formatMode:   formatMode,
+		compactMode:  compactMode,
+		verbatimMode: verbatimMode,
+		useReply:     true,
+	}
+	replyID = evalAndReply(session, "channel-response", content, p)
 	updateMap(message.ID, replyID)
 }
 
@@ -400,7 +494,7 @@ func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate)
 		log.Any("id", message.ID),
 		log.Any("reply", reply),
 		log.String("new-content", message.Content))
-	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
+	handleMessage(session, message.Message, reply)
 }
 
 func deleteMessage(session *discordgo.Session, message *discordgo.MessageDelete) {
@@ -414,7 +508,7 @@ func deleteMessage(session *discordgo.Session, message *discordgo.MessageDelete)
 		log.Any("id", message.ID),
 		log.Any("reply", reply),
 		log.Any("before", message.BeforeDelete))
-	handleMessage(session, &discordgo.MessageCreate{Message: message.Message}, reply)
+	handleMessage(session, message.Message, reply)
 }
 
 func registerCommands(session *discordgo.Session) {
@@ -490,7 +584,15 @@ func interactionCreate(session *discordgo.Session, interaction *discordgo.Intera
 			log.Any("channel", channelName),
 			log.Any("content", option))
 		option := option.StringValue()
-		responseMessage := eval(option, false, false, false)
+		p := &CommandParams{
+			session:      session,
+			channelID:    interaction.ChannelID,
+			replyID:      "",
+			formatMode:   false,
+			compactMode:  false,
+			verbatimMode: false,
+		}
+		responseMessage := evalInput(option, p)
 		response := &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
