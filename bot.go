@@ -156,6 +156,7 @@ func RemoveTripleBackticks(s string) string {
 		s = s[i:]
 		s = strings.TrimPrefix(s, "```grol")
 		s = strings.TrimPrefix(s, "```go")
+		s = strings.TrimPrefix(s, "```js")
 		s = strings.TrimPrefix(s, "```")
 		j := strings.Index(s, "```")
 		if j == -1 {

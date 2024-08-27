@@ -29,23 +29,11 @@ discord = {
 	}
 }
 
-func discordExampleMessage(){
-	msg= {
-	  "content": "A test...",
-	  "components":	[discord.actionRow([
-				discord.button("Option 1", discord.buttonStyle.primary, "option_1"),
-				discord.button("Option 2", discord.buttonStyle.secondary, "option_2")
-	  ])]
-	}
-	ChannelMessageSendComplex(msg) // returns the msg id
-	// error("error test")
-}
-
 // tic-tac-toe example
 func discordInteraction(state, userId, map) {
 	if state == nil {
 		state = {
-			"board": newTicTacToeBoard(),
+			"board": tictactoe.empty_board,
 			"next": "X"
 		}
 	}
@@ -53,7 +41,7 @@ func discordInteraction(state, userId, map) {
 	if clicked == "reset" {
 		InteractionRespond({
 			"type": discord.interaction.update_message,
-			"data": {"content": "<@" + userId + "> has reset the board", "components": ticTacToeBoardToComponents(newTicTacToeBoard(),-1,-1)}})
+			"data": {"content": "<@" + userId + "> has reset the board", "components": tictactoe.boardToComponents(tictactoe.empty_board,-1,-1)}})
 		return nil // clear state
 	}
 	pair = split(clicked, ",")
@@ -75,7 +63,7 @@ func discordInteraction(state, userId, map) {
 	}
 	InteractionRespond({
 		"type": discord.interaction.update_message,
-		"data": {"content": "<@" + userId + "> played " + clicked, "components": ticTacToeBoardToComponents(state.board,i,j)}
+		"data": {"content": "<@" + userId + "> played " + clicked, "components": tictactoe.boardToComponents(state.board,i,j)}
 	})
 	state
 }
@@ -93,7 +81,9 @@ func walk(f, a) {
 	}(f,a,0)
 }
 
-func ticTacToeBoardToComponents(board, hi, hj) {
+tictactoe = {
+  "empty_board": [["","",""],["","",""],["","",""]],
+  "boardToComponents": (board, hi, hj) => {
 	walk((row,i) => {discord.actionRow(
 		walk((cell,j) => {
 		   if cell == "" {
@@ -105,26 +95,19 @@ func ticTacToeBoardToComponents(board, hi, hj) {
 		   }
 		   discord.button(cell, style, sprintf("%d,%d", i+1, j+1))
 		}, row))}, board) + [discord.actionRow([discord.button("Reset", discord.buttonStyle.danger, "reset")])]
-}
-
-func sendTicTacToeBoard(board) {
+  },
+  "sendBoard": (board) =>{
 	msg = {
 		"content":    "Tic-Tac-Toe",
-		"components": ticTacToeBoardToComponents(board, -1, -1)
+		"components": tictactoe.boardToComponents(board, -1, -1)
 	}
 	ChannelMessageSendComplex(msg)
-}
-
-func newTicTacToeBoard() {
-	[["","",""],["","",""],["","",""]]
+    },
 }
 
 func TicTacToe() {
-	sendTicTacToeBoard(newTicTacToeBoard())
+	tictactoe.sendBoard(tictactoe.empty_board)
 }
-
-sampleBoard = [["","",""],["","X",""],["","O","X"]]
-
 
 // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
 print("Imported discord grol library ok")
