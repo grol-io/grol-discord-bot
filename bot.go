@@ -242,8 +242,9 @@ func evalInput(input string, p *CommandParams) string {
 			" Try `TicTacToe()` for more advanced example that includes grol handling discord interactions and complex messages.\n\n" +
 			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
 			" `-d` debug expressions)" +
-			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
-			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
+			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n" +
+			"Tip: _You can **edit** your messages and I will re-run and edit mine (less floody that way). Thank you!_\n\n" +
+			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n" +
 			"You can also try the /grol command, answers will be visible only to you!"
 	case "source":
 		res = "📄 [github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
@@ -320,7 +321,7 @@ func errorsBlock(errs []string) string {
 		}
 		res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
 	}
-	res += "\n```"
+	res += "\n``` _Please **edit** your message to correct instead of making a new one (less floody that way). Thank you!_"
 	return res
 }
 
