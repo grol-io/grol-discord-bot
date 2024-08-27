@@ -88,6 +88,26 @@ func updateMap(msgID, replyID string) {
 	}
 }
 
+func setFormatMode(session *discordgo.Session, message *discordgo.Message, p *CommandParams) {
+	message.Content = tagToCmd(message.Content, session.State.User.ID)
+	p.formatMode = strings.HasPrefix(message.Content, formatModeStr)
+	p.compactMode = strings.HasPrefix(message.Content, compactModeStr)
+	p.verbatimMode = strings.HasPrefix(message.Content, verbatimModeStr)
+	p.debugParenMode = strings.HasPrefix(message.Content, debugParenStr)
+	switch {
+	case p.formatMode:
+		message.Content = message.Content[len(formatModeStr):]
+	case p.compactMode:
+		message.Content = message.Content[len(compactModeStr):]
+	case p.verbatimMode:
+		message.Content = message.Content[len(verbatimModeStr):]
+	case p.debugParenMode:
+		message.Content = message.Content[len(debugParenStr):]
+	default:
+		message.Content = message.Content[len(grolPrefix):]
+	}
+}
+
 func handleDM(session *discordgo.Session, message *discordgo.Message, replyID string) {
 	log.S(log.Info, "direct-message",
 		log.Any("from", message.Author.Username),
@@ -96,32 +116,15 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	message.Content = tagToCmd(message.Content, session.State.User.ID)
-	formatMode := strings.HasPrefix(message.Content, formatModeStr)
-	compactMode := strings.HasPrefix(message.Content, compactModeStr)
-	verbatimMode := strings.HasPrefix(message.Content, verbatimModeStr)
-	var what string
-	switch {
-	case formatMode:
-		what = strings.TrimPrefix(message.Content, formatModeStr)
-	case compactMode:
-		what = strings.TrimPrefix(message.Content, compactModeStr)
-	case verbatimMode:
-		what = strings.TrimPrefix(message.Content, verbatimModeStr)
-	default:
-		what = strings.TrimPrefix(message.Content, grolPrefix)
-	}
 	p := &CommandParams{
-		session:      session,
-		message:      message,
-		channelID:    message.ChannelID,
-		replyID:      replyID,
-		formatMode:   formatMode,
-		compactMode:  compactMode,
-		verbatimMode: verbatimMode,
-		useReply:     false,
+		session:   session,
+		message:   message,
+		channelID: message.ChannelID,
+		replyID:   replyID,
+		useReply:  false,
 	}
-	replyID = evalAndReply(session, "dm-reply", what, p)
+	setFormatMode(session, message, p)
+	replyID = evalAndReply(session, "dm-reply", message.Content, p)
 	updateMap(message.ID, replyID)
 }
 
@@ -131,6 +134,7 @@ var (
 	formatModeStr      = grolPrefix + " -f"
 	compactModeStr     = grolPrefix + " -c"
 	verbatimModeStr    = grolPrefix + " -v"
+	debugParenStr      = grolPrefix + " -d"
 )
 
 func RemoveTripleBackticks(s string) string {
@@ -235,7 +239,8 @@ func evalInput(input string, p *CommandParams) string {
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc...\n\n" +
-			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode)" +
+			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
+			" `-d` debug expressions)" +
 			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
 			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n\n" +
 			"You can also try the /grol command, answers will be visible only to you!"
@@ -261,6 +266,7 @@ func evalInput(input string, p *CommandParams) string {
 		input = RemoveTripleBackticks(input)
 		cfg := replConfig()
 		cfg.Compact = p.compactMode
+		cfg.AllParens = p.debugParenMode
 		cfg.PreInput = func(state *eval.State) {
 			st := MessageState{
 				Session:          p.session,
@@ -273,10 +279,13 @@ func evalInput(input string, p *CommandParams) string {
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
 		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
-		if (p.formatMode || p.compactMode) && formatted != "" {
+		if (p.formatMode || p.compactMode || p.debugParenMode) && formatted != "" {
 			res = formatModeStr
 			if p.compactMode {
 				res = compactModeStr
+			}
+			if p.debugParenMode {
+				res = debugParenStr
 			}
 			res += "\n```go\n" + formatted + "``` produces: "
 		}
@@ -324,7 +333,7 @@ type CommandParams struct {
 	// If we already replied and have an ID of that reply (to edit it).
 	replyID string
 	// Formatting options. useReply selects if we should use reply (in channel) or send (DMs).
-	formatMode, compactMode, verbatimMode, useReply, hasErrors bool
+	formatMode, compactMode, debugParenMode, verbatimMode, useReply, hasErrors bool
 }
 
 // returns the id of the reply.
@@ -442,41 +451,25 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 		}
 		return
 	}
-	formatMode := strings.HasPrefix(message.Content, formatModeStr)
-	compactMode := strings.HasPrefix(message.Content, compactModeStr)
-	verbatimMode := strings.HasPrefix(message.Content, verbatimModeStr)
-	var content string
-	switch {
-	case formatMode:
-		content = message.Content[len(formatModeStr):]
-	case compactMode:
-		content = message.Content[len(compactModeStr):]
-	case verbatimMode:
-		content = message.Content[len(verbatimModeStr):]
-	default:
-		content = message.Content[len(grolPrefix):]
+	p := &CommandParams{
+		session:   session,
+		message:   message,
+		channelID: message.ChannelID,
+		replyID:   replyID,
+		useReply:  true,
 	}
+	setFormatMode(session, message, p)
 	log.S(log.Info, info,
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
 		log.Any("channel", channelName),
 		log.Any("content", message.Content),
-		log.Bool("format", formatMode))
+		log.Bool("format", p.formatMode))
 	if message.Author.Bot {
 		log.S(log.Warning, "ignoring bot message", log.Any("message", message))
 		return
 	}
-	p := &CommandParams{
-		session:      session,
-		message:      message,
-		channelID:    message.ChannelID,
-		replyID:      replyID,
-		formatMode:   formatMode,
-		compactMode:  compactMode,
-		verbatimMode: verbatimMode,
-		useReply:     true,
-	}
-	replyID = evalAndReply(session, "channel-response", content, p)
+	replyID = evalAndReply(session, "channel-response", message.Content, p)
 	updateMap(message.ID, replyID)
 }
 
