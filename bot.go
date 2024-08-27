@@ -103,9 +103,8 @@ func setFormatMode(session *discordgo.Session, message *discordgo.Message, p *Co
 		message.Content = message.Content[len(verbatimModeStr):]
 	case p.debugParenMode:
 		message.Content = message.Content[len(debugParenStr):]
-	default:
-		message.Content = message.Content[len(grolPrefix):]
 	}
+	message.Content = strings.TrimPrefix(message.Content, grolPrefix)
 }
 
 func handleDM(session *discordgo.Session, message *discordgo.Message, replyID string) {
@@ -238,7 +237,8 @@ func evalInput(input string, p *CommandParams) string {
 	case "", "help", "-h", "--help", "-help":
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
-			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc...\n\n" +
+			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc..." +
+			" Try `TicTacToe()` for more advanced example that includes grol handling discord interactions and complex messages.\n\n" +
 			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
 			" `-d` debug expressions)" +
 			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n\n" +
