@@ -52,6 +52,7 @@ func Run(maxHistoryLength int) {
 	session.AddHandler(interactionCreate)
 	session.AddHandler(deleteMessage)
 	session.AddHandler(onInteractionCreate)
+	session.AddHandler(messageReactionAdd)
 
 	// open session
 	err = session.Open()
@@ -598,6 +599,34 @@ func interactionCreate(session *discordgo.Session, interaction *discordgo.Intera
 		err := session.InteractionRespond(interaction.Interaction, response)
 		if err != nil {
 			log.Errf("Error responding to interaction: %v", err)
+		}
+	}
+}
+
+// This function will be called (due to AddHandler above) when a reaction is added to a message.
+func messageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+	// Fetch the message to check the author ID
+	message, err := s.ChannelMessage(r.ChannelID, r.MessageID)
+	if err != nil {
+		log.Errf("Error fetching message: %v", err)
+		return
+	}
+	// Check if the message was ours
+	if message.Author.ID != s.State.User.ID { // Directly use the session's bot ID
+		log.Debugf("Reaction not on a message from the bot")
+		return
+	}
+	user, err := s.User(r.UserID)
+	if err != nil {
+		log.Errf("Error fetching user: %v", err)
+		return
+	}
+	log.S(log.Info, "reaction", log.Any("reaction", r), log.Any("user", user))
+	if r.Emoji.Name == "👎" {
+		log.S(log.Warning, "downvote-delete", log.Any("user", user), log.Any("message", message))
+		err := s.ChannelMessageDelete(r.ChannelID, r.MessageID)
+		if err != nil {
+			log.Errf("Error deleting message: %v", err)
 		}
 	}
 }
