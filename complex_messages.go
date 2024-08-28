@@ -12,9 +12,67 @@ import (
 	"grol.io/grol/repl"
 )
 
+func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, msg string) {
+	log.S(log.Warning, msg, log.Any("author", userID))
+	resp := &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "🔴 I'm sorry Dave. I'm afraid I can't do that.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}
+	err := s.InteractionRespond(i.Interaction, resp)
+	if err != nil {
+		log.Errf("Error responding to interaction: %v", err)
+	}
+}
+
+func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	log.S(log.Info, "Processing application command interaction", log.Any("interaction", i))
+	var userID string
+	if i.User == nil {
+		userID = i.Member.User.ID
+	} else {
+		userID = i.User.ID
+	}
+	msgs := i.ApplicationCommandData().Resolved.Messages
+	if len(msgs) != 1 {
+		errorReply(s, i, userID, "Expected exactly one message")
+		return
+	}
+	var msg *discordgo.Message
+	for _, v := range msgs {
+		msg = v
+	}
+	if msg.Author.ID != s.State.User.ID {
+		errorReply(s, i, userID, "Expected message to be from the bot")
+		return
+	}
+	resp := &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "✨ Poof! The message has vanished into the void.",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}
+	log.S(log.Warning, "command-delete", log.Any("user", userID), log.Any("message", msg))
+	err := s.ChannelMessageDelete(i.ChannelID, msg.ID)
+	if err != nil {
+		log.Errf("Error deleting message: %v", err)
+	}
+	err = s.InteractionRespond(i.Interaction, resp)
+	if err != nil {
+		log.Errf("Error responding to interaction: %v", err)
+	}
+}
+
 func onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if i.Type == discordgo.InteractionApplicationCommand {
+		processApplicationCommandInteraction(s, i)
+		return
+	}
 	if i.Type != discordgo.InteractionMessageComponent {
-		log.Infof("Ignoring interaction type: %v", i.Type)
+		log.S(log.Info, "Ignoring interaction", log.Any("type", i.Type))
 		return
 	}
 	log.S(log.Info, "interaction", log.Any("interaction", i))

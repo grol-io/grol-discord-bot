@@ -265,7 +265,7 @@ func evalInput(input string, p *CommandParams) string {
 			return errorsBlock([]string{"Only the bot admin can reset the bot - please ask <@" + BotAdmin + ">"})
 		}
 		log.Critf("Admin %s requested reset", p.message.Author.ID)
-		scheduleReset()
+		scheduleReset(p.session)
 		return "🔄 Resetting bot per <@" + BotAdmin + ">, brb!."
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
@@ -547,15 +547,22 @@ func registerCommands(session *discordgo.Session) {
 			},
 		},
 	}
-
 	_, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
 	if err != nil {
-		log.Fatalf("Cannot create command: %v", err)
+		log.Fatalf("Cannot create slash command: %v", err)
+	}
+	command = &discordgo.ApplicationCommand{
+		Name: "grol: delete this",
+		Type: discordgo.MessageApplicationCommand,
+	}
+	_, err = session.ApplicationCommandCreate(session.State.User.ID, "", command)
+	if err != nil {
+		log.Fatalf("Cannot create chat command: %v", err)
 	}
 }
 
 func interactionCreate(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
-	if interaction.Type != discordgo.InteractionApplicationCommand {
+	if interaction.Type != discordgo.InteractionApplicationCommand && interaction.Type != discordgo.InteractionMessageComponent {
 		log.LogVf("Ignoring non command interaction type: %v", interaction.Type)
 		return
 	}
@@ -647,12 +654,23 @@ func IsAdmin(userID string) bool {
 	return BotAdmin == userID
 }
 
-func scheduleReset() {
+func scheduleReset(s *discordgo.Session) {
 	go func() {
+		registeredCommands, err := s.ApplicationCommands(s.State.User.ID, "")
+		if err != nil {
+			log.Critf("Could not fetch registered commands: %v", err)
+		}
+		for _, v := range registeredCommands {
+			err = s.ApplicationCommandDelete(s.State.User.ID, "", v.ID)
+			if err != nil {
+				log.Critf("Cannot delete '%v' command: %v", v.Name, err)
+			}
+		}
+		log.Infof("All %d commands deleted, waiting 3 seconds before resetting", len(registeredCommands))
 		time.Sleep(3 * time.Second)
 		log.Critf("Resetting bot now")
 		// unlink the .gr file to cleanup state.
-		err := os.Rename(".gr", ".gr.bak")
+		err = os.Rename(".gr", ".gr.bak")
 		if err != nil {
 			log.Critf("Error removing .gr file: %v", err)
 		}
