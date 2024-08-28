@@ -639,7 +639,7 @@ func messageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 		return
 	}
 	// Check if the message was ours
-	if message.Author.ID != s.State.User.ID { // Directly use the session's bot ID
+	if !IsThisBot(message.Author.ID) { // Directly use the session's bot ID
 		log.Debugf("Reaction not on a message from the bot")
 		return
 	}
@@ -667,12 +667,12 @@ func IsAdmin(userID string) bool {
 
 func scheduleReset(s *discordgo.Session) {
 	go func() {
-		registeredCommands, err := s.ApplicationCommands(s.State.User.ID, "")
+		registeredCommands, err := s.ApplicationCommands(selfID, "")
 		if err != nil {
 			log.Critf("Could not fetch registered commands: %v", err)
 		}
 		for _, v := range registeredCommands {
-			err = s.ApplicationCommandDelete(s.State.User.ID, "", v.ID)
+			err = s.ApplicationCommandDelete(selfID, "", v.ID)
 			if err != nil {
 				log.Critf("Cannot delete '%v' command: %v", v.Name, err)
 			}

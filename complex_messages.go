@@ -53,7 +53,7 @@ func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.Int
 	for _, v := range msgs {
 		msg = v
 	}
-	if msg.Author.ID != s.State.User.ID {
+	if !IsThisBot(msg.Author.ID) {
 		errorReply(s, i, userID, "Expected message to be from the bot")
 		return
 	}
