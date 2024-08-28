@@ -51,9 +51,8 @@ func Run(maxHistoryLength int) {
 	// add event handlers
 	session.AddHandler(newMessage)
 	session.AddHandler(updateMessage)
-	session.AddHandler(interactionCreate)
 	session.AddHandler(deleteMessage)
-	session.AddHandler(onInteractionCreate)
+	session.AddHandler(interactionCreate)
 	session.AddHandler(messageReactionAdd)
 
 	// open session
@@ -561,7 +560,7 @@ func registerCommands(session *discordgo.Session) {
 	}
 }
 
-func interactionCreate(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
+func slashCmdInteraction(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	if interaction.Type != discordgo.InteractionApplicationCommand {
 		log.LogVf("Ignoring non command interaction type: %v", interaction.Type)
 		return
