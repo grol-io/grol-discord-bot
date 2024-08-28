@@ -562,7 +562,7 @@ func registerCommands(session *discordgo.Session) {
 }
 
 func interactionCreate(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
-	if interaction.Type != discordgo.InteractionApplicationCommand && interaction.Type != discordgo.InteractionMessageComponent {
+	if interaction.Type != discordgo.InteractionApplicationCommand {
 		log.LogVf("Ignoring non command interaction type: %v", interaction.Type)
 		return
 	}
