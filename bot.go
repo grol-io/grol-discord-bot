@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 var (
 	BotToken string
 	AutoSave bool
+	BotAdmin string
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
@@ -72,7 +74,7 @@ func Run(maxHistoryLength int) {
 	}
 	log.S(log.Info, "Library eval result", log.String("result", res))
 
-	log.Infof("Bot is now running with AutoSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoSave)
+	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
 }
@@ -258,6 +260,13 @@ func evalInput(input string, p *CommandParams) string {
 	case "bug":
 		res = "🐞 Please report any issue or suggestion at " +
 			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
+	case "reset":
+		if !IsAdmin(p.message.Author.ID) {
+			return errorsBlock([]string{"Only the bot admin can reset the bot - please ask <@" + BotAdmin + ">"})
+		}
+		log.Critf("Admin %s requested reset", p.message.Author.ID)
+		scheduleReset()
+		return "🔄 Resetting bot per <@" + BotAdmin + ">, brb!."
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		//   !grol
@@ -629,4 +638,25 @@ func messageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 			log.Errf("Error deleting message: %v", err)
 		}
 	}
+}
+
+func IsAdmin(userID string) bool {
+	if BotAdmin == "" {
+		return false
+	}
+	return BotAdmin == userID
+}
+
+func scheduleReset() {
+	go func() {
+		time.Sleep(3 * time.Second)
+		log.Critf("Resetting bot now")
+		// unlink the .gr file to cleanup state.
+		err := os.Rename(".gr", ".gr.bak")
+		if err != nil {
+			log.Critf("Error removing .gr file: %v", err)
+		}
+		// exit and get restarted by systemd.
+		os.Exit(1)
+	}()
 }

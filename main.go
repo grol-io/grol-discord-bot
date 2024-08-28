@@ -31,5 +31,6 @@ func main() {
 	if memlimit == math.MaxInt64 {
 		log.Fatalf("Memory limit not set, please set GOMEMLIMIT=1GiB or similar")
 	}
+	BotAdmin = os.Getenv("DISCORD_BOT_ADMIN")
 	Run(*num)
 }

@@ -109,5 +109,12 @@ func TicTacToe() {
 	tictactoe.sendBoard(tictactoe.empty_board)
 }
 
+// ------- Misc stuff ----
+
+func layout(){
+	println("Simple project layout [github.com/go-standard/project-layout](<https://github.com/go-standard/project-layout#project-layout>) - simple is good!")
+}
+
+
 // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
 print("Imported discord grol library ok")
