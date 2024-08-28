@@ -73,11 +73,7 @@ func discordInteraction(state, userId, map) {
 	row[j] = state.next
 	board[i] = row
 	state.board = board
-	if state.next == "X" {
-		state.next = "O"
-	} else {
-		state.next = "X"
-	}
+	state.next = tictactoe.next(state.next)
 	state.end = tictactoe.endGame(board)
 	if state.end != nil{
 		clicked = clicked + ": " + state.end + " wins!"
