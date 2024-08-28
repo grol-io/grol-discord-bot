@@ -3,13 +3,13 @@
 */
 
 discord = {
-	"actionRow": elems => {
+  "actionRow": elems => {
 		{
 		"type": 1,
 		"components": elems
 		}
 	},
-	"button": (label, style, custom_id) => {
+  "button": (label, style, custom_id) => {
 		{
 			"type": 2,
 			"label": label,
@@ -17,20 +17,17 @@ discord = {
 			"custom_id": custom_id
 		}
 	},
-	"buttonStyle" : {
+  "buttonStyle" : {
 		"primary": 1,
 		"secondary": 2,
 		"success": 3,
 		"danger": 4,
 		"link": 5
 	},
-	"interaction" : {
+  "interaction" : {
 		"update_message" : 7
-	}
-}
-
-// tic-tac-toe example
-func discordInteraction(state, userId, map) {
+	},
+  "doInteraction" : (state, userId, map) => { // tic-tac-toe example
 	if state == nil {
 		state = {
 			"board": tictactoe.empty_board,
@@ -83,6 +80,7 @@ func discordInteraction(state, userId, map) {
 		"data": {"content": tag + " played " + clicked, "components": tictactoe.boardToComponents(state.board,i,j)}
 	})
 	state
+  }
 }
 
 state = {}
