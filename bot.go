@@ -25,6 +25,7 @@ var (
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
+	selfID       string // This bot's user ID.
 )
 
 const Unknown = "unknown"
@@ -62,6 +63,8 @@ func Run(maxHistoryLength int) {
 	}
 	defer session.Close() // close session, after function termination
 
+	selfID = session.State.User.ID
+
 	registerCommands(session)
 
 	// Eval the library and save it.
@@ -78,6 +81,10 @@ func Run(maxHistoryLength int) {
 	scli.UntilInterrupted()
 }
 
+func IsThisBot(id string) bool {
+	return id == selfID
+}
+
 func updateMap(msgID, replyID string) {
 	node, isNew := msgSet.Add(msgID, replyID)
 	msg := "Updated message in history"
@@ -90,8 +97,8 @@ func updateMap(msgID, replyID string) {
 	}
 }
 
-func setFormatMode(session *discordgo.Session, message *discordgo.Message, p *CommandParams) {
-	message.Content = tagToCmd(message.Content, session.State.User.ID)
+func setFormatMode(message *discordgo.Message, p *CommandParams) {
+	message.Content = tagToCmd(message.Content, selfID)
 	p.formatMode = strings.HasPrefix(message.Content, formatModeStr)
 	p.compactMode = strings.HasPrefix(message.Content, compactModeStr)
 	p.verbatimMode = strings.HasPrefix(message.Content, verbatimModeStr)
@@ -124,7 +131,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		replyID:   replyID,
 		useReply:  false,
 	}
-	setFormatMode(session, message, p)
+	setFormatMode(message, p)
 	replyID = evalAndReply(session, "dm-reply", message.Content, p)
 	updateMap(message.ID, replyID)
 }
@@ -330,7 +337,7 @@ func errorsBlock(errs []string) string {
 		}
 		res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
 	}
-	res += "\n``` _Please **edit** your message to correct instead of making a new one (less floody that way). Thank you!_"
+	res += "\n```Tip: _You can **edit** your message to correct instead of making a new one!_"
 	return res
 }
 
@@ -407,7 +414,7 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.author.id is same as bot.author.id then just return
 	*/
 	log.S(log.Debug, "message", log.Any("message", message))
-	if message.Author.ID == session.State.User.ID {
+	if IsThisBot(message.Author.ID) {
 		return
 	}
 	handleMessage(session, message.Message, "")
@@ -444,10 +451,15 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 	info := "channel-message"
 	mentioned := false
 	for _, mention := range message.Mentions {
-		if mention.ID == session.State.User.ID {
+		if IsThisBot(mention.ID) {
+			ref := message.ReferencedMessage
+			if ref != nil {
+				log.S(log.Info, "Ignoring bot mention in a reply", log.Any("ref", ref), log.Any("message", message))
+				return
+			}
 			info = "channel-mention"
 			mentioned = true
-			message.Content = tagToCmd(message.Content, session.State.User.ID)
+			message.Content = tagToCmd(message.Content, mention.ID)
 			break
 		}
 	}
@@ -469,7 +481,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 		replyID:   replyID,
 		useReply:  true,
 	}
-	setFormatMode(session, message, p)
+	setFormatMode(message, p)
 	log.S(log.Info, info,
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
@@ -486,7 +498,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 
 func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
 	log.S(log.Debug, "message update", log.Any("message", message))
-	if message.Author.ID == session.State.User.ID { // self update bail?
+	if IsThisBot(message.Author.ID) { // don't loop handling our own messages.
 		return
 	}
 	reply, found := msgSet.Get(message.ID)
@@ -546,7 +558,7 @@ func registerCommands(session *discordgo.Session) {
 			},
 		},
 	}
-	_, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
+	_, err := session.ApplicationCommandCreate(selfID, "", command)
 	if err != nil {
 		log.Fatalf("Cannot create slash command: %v", err)
 	}
@@ -554,7 +566,7 @@ func registerCommands(session *discordgo.Session) {
 		Name: "grol: delete this",
 		Type: discordgo.MessageApplicationCommand,
 	}
-	_, err = session.ApplicationCommandCreate(session.State.User.ID, "", command)
+	_, err = session.ApplicationCommandCreate(selfID, "", command)
 	if err != nil {
 		log.Fatalf("Cannot create chat command: %v", err)
 	}
@@ -665,8 +677,9 @@ func scheduleReset(s *discordgo.Session) {
 				log.Critf("Cannot delete '%v' command: %v", v.Name, err)
 			}
 		}
-		log.Infof("All %d commands deleted, waiting 3 seconds before resetting", len(registeredCommands))
-		time.Sleep(3 * time.Second)
+		delay := 3 * time.Second
+		log.Infof("All %d commands deleted, waiting %s before resetting", len(registeredCommands), delay)
+		time.Sleep(delay)
 		log.Critf("Resetting bot now")
 		// unlink the .gr file to cleanup state.
 		err = os.Rename(".gr", ".gr.bak")
