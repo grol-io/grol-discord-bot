@@ -29,6 +29,7 @@ PrivateTmp=true
 # Note: should use LoadCredential= instead as this isn't very secure.
 EnvironmentFile=/home/ubuntu/grol-discord-bot/.dtoken
 Environment=GOMEMLIMIT=1GiB
+Environment=DISCORD_BOT_ADMIN=477231908984586240
 # Don't let it go too much above the soft limit (newer grol has memory checks too)
 MemoryHigh=1.5G
 MemoryMax=2G

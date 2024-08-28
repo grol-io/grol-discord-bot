@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,9 +21,11 @@ import (
 var (
 	BotToken string
 	AutoSave bool
+	BotAdmin string
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
+	selfID       string // This bot's user ID.
 )
 
 const Unknown = "unknown"
@@ -49,9 +52,8 @@ func Run(maxHistoryLength int) {
 	// add event handlers
 	session.AddHandler(newMessage)
 	session.AddHandler(updateMessage)
-	session.AddHandler(interactionCreate)
 	session.AddHandler(deleteMessage)
-	session.AddHandler(onInteractionCreate)
+	session.AddHandler(interactionCreate)
 	session.AddHandler(messageReactionAdd)
 
 	// open session
@@ -60,6 +62,8 @@ func Run(maxHistoryLength int) {
 		log.Fatalf("Init discordgo.Open error: %v", err)
 	}
 	defer session.Close() // close session, after function termination
+
+	selfID = session.State.User.ID
 
 	registerCommands(session)
 
@@ -72,9 +76,13 @@ func Run(maxHistoryLength int) {
 	}
 	log.S(log.Info, "Library eval result", log.String("result", res))
 
-	log.Infof("Bot is now running with AutoSave=%t.  Press CTRL-C or SIGTERM to exit.", AutoSave)
+	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	scli.UntilInterrupted()
+}
+
+func IsThisBot(id string) bool {
+	return id == selfID
 }
 
 func updateMap(msgID, replyID string) {
@@ -89,8 +97,8 @@ func updateMap(msgID, replyID string) {
 	}
 }
 
-func setFormatMode(session *discordgo.Session, message *discordgo.Message, p *CommandParams) {
-	message.Content = tagToCmd(message.Content, session.State.User.ID)
+func setFormatMode(message *discordgo.Message, p *CommandParams) {
+	message.Content = tagToCmd(message.Content, selfID)
 	p.formatMode = strings.HasPrefix(message.Content, formatModeStr)
 	p.compactMode = strings.HasPrefix(message.Content, compactModeStr)
 	p.verbatimMode = strings.HasPrefix(message.Content, verbatimModeStr)
@@ -123,7 +131,7 @@ func handleDM(session *discordgo.Session, message *discordgo.Message, replyID st
 		replyID:   replyID,
 		useReply:  false,
 	}
-	setFormatMode(session, message, p)
+	setFormatMode(message, p)
 	replyID = evalAndReply(session, "dm-reply", message.Content, p)
 	updateMap(message.ID, replyID)
 }
@@ -258,6 +266,13 @@ func evalInput(input string, p *CommandParams) string {
 	case "bug":
 		res = "🐞 Please report any issue or suggestion at " +
 			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
+	case "reset":
+		if !IsAdmin(p.message.Author.ID) {
+			return errorsBlock([]string{"Only the bot admin can reset the bot - please ask <@" + BotAdmin + ">"})
+		}
+		log.Critf("Admin %s requested reset", p.message.Author.ID)
+		scheduleReset(p.session)
+		return "🔄 Resetting bot per <@" + BotAdmin + ">, brb!."
 	default:
 		// TODO: stdout vs stderr vs result. https://github.com/grol-io/grol/issues/33
 		//   !grol
@@ -322,7 +337,7 @@ func errorsBlock(errs []string) string {
 		}
 		res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
 	}
-	res += "\n``` _Please **edit** your message to correct instead of making a new one (less floody that way). Thank you!_"
+	res += "\n```Tip: _You can **edit** your message to correct instead of making a new one!_"
 	return res
 }
 
@@ -399,7 +414,7 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.author.id is same as bot.author.id then just return
 	*/
 	log.S(log.Debug, "message", log.Any("message", message))
-	if message.Author.ID == session.State.User.ID {
+	if IsThisBot(message.Author.ID) {
 		return
 	}
 	handleMessage(session, message.Message, "")
@@ -436,10 +451,15 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 	info := "channel-message"
 	mentioned := false
 	for _, mention := range message.Mentions {
-		if mention.ID == session.State.User.ID {
+		if IsThisBot(mention.ID) {
+			ref := message.ReferencedMessage
+			if ref != nil {
+				log.S(log.Info, "Ignoring bot mention in a reply", log.Any("ref", ref), log.Any("message", message))
+				return
+			}
 			info = "channel-mention"
 			mentioned = true
-			message.Content = tagToCmd(message.Content, session.State.User.ID)
+			message.Content = tagToCmd(message.Content, mention.ID)
 			break
 		}
 	}
@@ -461,7 +481,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 		replyID:   replyID,
 		useReply:  true,
 	}
-	setFormatMode(session, message, p)
+	setFormatMode(message, p)
 	log.S(log.Info, info,
 		log.Any("from", message.Author.Username),
 		log.Any("server", serverName),
@@ -478,7 +498,7 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 
 func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
 	log.S(log.Debug, "message update", log.Any("message", message))
-	if message.Author.ID == session.State.User.ID { // self update bail?
+	if IsThisBot(message.Author.ID) { // don't loop handling our own messages.
 		return
 	}
 	reply, found := msgSet.Get(message.ID)
@@ -538,14 +558,21 @@ func registerCommands(session *discordgo.Session) {
 			},
 		},
 	}
-
-	_, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
+	_, err := session.ApplicationCommandCreate(selfID, "", command)
 	if err != nil {
-		log.Fatalf("Cannot create command: %v", err)
+		log.Fatalf("Cannot create slash command: %v", err)
+	}
+	command = &discordgo.ApplicationCommand{
+		Name: "grol: delete this",
+		Type: discordgo.MessageApplicationCommand,
+	}
+	_, err = session.ApplicationCommandCreate(selfID, "", command)
+	if err != nil {
+		log.Fatalf("Cannot create chat command: %v", err)
 	}
 }
 
-func interactionCreate(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
+func slashCmdInteraction(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	if interaction.Type != discordgo.InteractionApplicationCommand {
 		log.LogVf("Ignoring non command interaction type: %v", interaction.Type)
 		return
@@ -612,7 +639,7 @@ func messageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 		return
 	}
 	// Check if the message was ours
-	if message.Author.ID != s.State.User.ID { // Directly use the session's bot ID
+	if !IsThisBot(message.Author.ID) { // Directly use the session's bot ID
 		log.Debugf("Reaction not on a message from the bot")
 		return
 	}
@@ -629,4 +656,37 @@ func messageReactionAdd(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 			log.Errf("Error deleting message: %v", err)
 		}
 	}
+}
+
+func IsAdmin(userID string) bool {
+	if BotAdmin == "" {
+		return false
+	}
+	return BotAdmin == userID
+}
+
+func scheduleReset(s *discordgo.Session) {
+	go func() {
+		registeredCommands, err := s.ApplicationCommands(selfID, "")
+		if err != nil {
+			log.Critf("Could not fetch registered commands: %v", err)
+		}
+		for _, v := range registeredCommands {
+			err = s.ApplicationCommandDelete(selfID, "", v.ID)
+			if err != nil {
+				log.Critf("Cannot delete '%v' command: %v", v.Name, err)
+			}
+		}
+		delay := 3 * time.Second
+		log.Infof("All %d commands deleted, waiting %s before resetting", len(registeredCommands), delay)
+		time.Sleep(delay)
+		log.Critf("Resetting bot now")
+		// unlink the .gr file to cleanup state.
+		err = os.Rename(".gr", ".gr.bak")
+		if err != nil {
+			log.Critf("Error removing .gr file: %v", err)
+		}
+		// exit and get restarted by systemd.
+		os.Exit(1)
+	}()
 }
