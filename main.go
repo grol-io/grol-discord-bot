@@ -14,7 +14,7 @@ import (
 var (
 	//go:embed discord.gr
 	libraryCode string
-	depth       = flag.Int("max-depth", 10000, "Maximum depth of recursion")
+	depth       = flag.Int("max-depth", 2500, "Maximum depth of recursion")
 	maxLen      = flag.Int("max-save-len", 2000, "Maximum len of saved identifiers, use 0 for unlimited")
 	panicF      = flag.Bool("panic", false, "Don't catch panic (DEV only)")
 )
