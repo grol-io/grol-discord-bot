@@ -99,7 +99,7 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	} else {
 		userID = i.User.ID
 	}
-	code := fmt.Sprintf("state[%q] = discordInteraction(state[%q],%q,%s)", i.Message.ID, i.Message.ID, userID, json)
+	code := fmt.Sprintf("state[%q] = discord.doInteraction(state[%q],%q,%s)", i.Message.ID, i.Message.ID, userID, json)
 	log.Infof("Running code: %s", code)
 	cfg := replConfig()
 	cfg.PreInput = func(state *eval.State) {
