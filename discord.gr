@@ -206,6 +206,7 @@ func layout(){
 
 func str(x) {sprintf("%v", x)}
 
+// Iterate n times with first argument i=0 to n-1 and passing the intermediate result as second argument.
 func for(n, f, start) {
     (i,f,x) => { // internal lambda with the index param and intermediate result
 		if (i>=n) {
@@ -214,6 +215,15 @@ func for(n, f, start) {
 		r = f(i,x)
        self(i+1, f,r)
     }(0,f,start)
+}
+
+// Apply a function to each element of an array.
+func apply(f, a) {
+    if (len(a)==0) {
+        []
+    } else {
+        [f(first(a))]+apply(f,rest(a))
+    }
 }
 
 // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
