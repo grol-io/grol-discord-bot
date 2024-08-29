@@ -123,6 +123,8 @@ discord = {
 	state.end = tictactoe.endGame(board)
 	if state.end != nil{
 		clicked = clicked + ": " + state.end + " wins!"
+	} else if state.turn >= 9 {
+		clicked = clicked + ": draw."
 	}
 	InteractionRespond({
 		"type": discord.interaction.update_message,
@@ -186,49 +188,41 @@ tictactoe = {
   },
   "play": (board, next) => {
 	for i = 0:3 {
+		freeList = []
 		row = board[i]
 		for j = 0:3 {
 			cell = row[j]
-			if cell == "" { // TODO: use continue when implemented
-				row[j] = next
-				board[i] = row
-				if tictactoe.endGame(board) != nil {
-					log("Win by", next, "at", i, j)
-					return [i,j]
-				}
-				row[j] = tictactoe.next(next)
-				board[i] = row
-				if tictactoe.endGame(board) != nil {
-					log("Loss by", next, "at", i, j)
-					return [i,j]
-				}
-				// restore board
-				row[j]=""
-				board[i]=row
+			if cell != "" {
+				continue
 			}
+			freeList = freeList + [[i,j]]
+			row[j] = next
+			board[i] = row
+			if tictactoe.endGame(board) != nil {
+				log("Win by", next, "at", i, j)
+				return [i,j]
+			}
+			row[j] = tictactoe.next(next)
+			board[i] = row
+			if tictactoe.endGame(board) != nil {
+				log("Loss by", next, "at", i, j)
+				return [i,j]
+			}
+			// restore board
+			row[j]=""
+			board[i]=row
 		}
+	}
+	if len(freeList) == 1 { // only one move left
+		return freeList[0]
 	}
 	// try middle move
 	if board[1][1] == "" {
-		[1,1]
-	} else if board[0][0] == "" {
-		[0,0]
-	} else if board[0][2] == "" {
-		[0,2]
-	} else if board[2][0] == "" {
-		[2,0]
-	} else if board[2][2] == "" {
-		[2,2]
-	} else if board[0][1] == "" {
-		[0,1]
-	} else if board[1][0] == "" {
-		[1,0]
-	} else if board[1][2] == "" {
-		[1,2]
-	} else {
-		[2,1]
+		return [1,1]
 	}
-  }
+	// random move
+	freeList[rand(len(freeList))]
+  },
 }
 
 func TicTacToe() {
