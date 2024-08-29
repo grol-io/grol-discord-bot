@@ -226,5 +226,25 @@ func apply(f, a) {
     }
 }
 
+// Reverse an array
+func reverse(a) {
+    if len(a) == 0 {
+        return []
+    }
+    self(rest(a)) + first(a)
+}
+
+// Filter an array
+func filter(predicate, arr) {
+	if len(arr) == 0 {
+	  []
+	} else if predicate(first(arr)) {
+      [first(arr)] + filter(predicate, rest(arr))
+	} else {
+	  filter(predicate, rest(arr))
+	}
+}
+
+
 // Result of eval of this file is logged by bot.go Run(). confirm we reached the end without error.
 print("Imported discord grol library ok")
