@@ -236,6 +236,7 @@ func replConfig() repl.Options {
 	cfg.MaxDepth = *depth
 	cfg.MaxValueLen = *maxLen
 	cfg.PanicOk = *panicF
+	cfg.MaxDuration = *maxDur
 	return cfg
 }
 
