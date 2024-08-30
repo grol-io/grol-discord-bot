@@ -202,16 +202,26 @@ tictactoe = {
 				log("Win by", next, "at", i, j)
 				return [i,j]
 			}
-			row[j] = tictactoe.next(next)
-			board[i] = row
-			if tictactoe.endGame(board) != nil {
-				log("Loss by", next, "at", i, j)
-				return [i,j]
-			}
 			// restore board
 			row[j]=""
 			board[i]=row
 		}
+	}
+	n = tictactoe.next(next)
+	// No win, try to block
+	for c = freeList {
+		i = c[0]
+		j = c[1]
+		row = board[i]
+		row[j] = n
+		board[i] = row
+		if tictactoe.endGame(board) != nil {
+			log("Loss by", next, "at", i, j)
+			return [i,j]
+		}
+		// restore board
+		row[j] = ""
+		board[i] = row
 	}
 	if len(freeList) == 1 { // only one move left
 		return freeList[0]
