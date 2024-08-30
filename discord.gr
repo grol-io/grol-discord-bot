@@ -186,42 +186,42 @@ tictactoe = {
 		"X"
 	}
   },
+  "try": (board, i, j, next) => {
+	if board[i][j] != "" {
+		return nil
+	}
+	row = board[i]
+	row[j] = next
+	board[i] = row
+	return board
+},
   "play": (board, next) => {
+	freeList = []
 	for i = 0:3 {
-		freeList = []
-		row = board[i]
 		for j = 0:3 {
-			cell = row[j]
-			if cell != "" {
+			check = tictactoe.try(board, i, j, next)
+			if check == nil {
 				continue
 			}
 			freeList = freeList + [[i,j]]
-			row[j] = next
-			board[i] = row
-			if tictactoe.endGame(board) != nil {
+			if tictactoe.endGame(check) != nil {
 				log("Win by", next, "at", i, j)
 				return [i,j]
 			}
-			// restore board
-			row[j]=""
-			board[i]=row
 		}
 	}
+	log("no win yet", freeList)
 	n = tictactoe.next(next)
 	// No win, try to block
 	for c = freeList {
+		log("Checking", c)
 		i = c[0]
 		j = c[1]
-		row = board[i]
-		row[j] = n
-		board[i] = row
-		if tictactoe.endGame(board) != nil {
+		check = tictactoe.try(board, i, j, n)
+		if tictactoe.endGame(check) != nil {
 			log("Loss by", next, "at", i, j)
 			return [i,j]
 		}
-		// restore board
-		row[j] = ""
-		board[i] = row
 	}
 	if len(freeList) == 1 { // only one move left
 		return freeList[0]
