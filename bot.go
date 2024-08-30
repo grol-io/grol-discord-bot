@@ -382,23 +382,34 @@ func reply(session *discordgo.Session, response string, p *CommandParams) string
 	}
 	if useEdit {
 		// Edit of previous message case.
-		_, err = session.ChannelMessageEdit(p.channelID, p.replyID, response)
+		_, err = session.ChannelMessageEditComplex(&discordgo.MessageEdit{
+			ID:      p.replyID,
+			Channel: p.channelID,
+			Content: &response,
+			AllowedMentions: &discordgo.MessageAllowedMentions{
+				Parse: []discordgo.AllowedMentionType{},
+			},
+		})
 		if err != nil {
 			log.S(log.Error, "edit-error", log.Any("err", err))
 		}
 		return p.replyID
 	}
 	// New DM or new channel message cases.
-	var reply *discordgo.Message
+	msg := &discordgo.MessageSend{
+		Content: response,
+		AllowedMentions: &discordgo.MessageAllowedMentions{
+			Parse: []discordgo.AllowedMentionType{},
+		},
+	}
 	if p.useReply {
-		reply, err = session.ChannelMessageSendReply(p.channelID, response, &discordgo.MessageReference{
+		msg.Reference = &discordgo.MessageReference{
 			MessageID: p.message.ID,
 			ChannelID: p.message.ChannelID,
 			GuildID:   p.message.GuildID,
-		})
-	} else {
-		reply, err = session.ChannelMessageSend(p.channelID, response)
+		}
 	}
+	reply, err := session.ChannelMessageSendComplex(p.channelID, msg)
 	if reply != nil {
 		p.replyID = reply.ID
 	}
