@@ -390,15 +390,20 @@ func reply(session *discordgo.Session, response string, p *CommandParams) string
 	}
 	// New DM or new channel message cases.
 	var reply *discordgo.Message
+	msg := &discordgo.MessageSend{
+		Content: response,
+		AllowedMentions: &discordgo.MessageAllowedMentions{
+			Parse: []discordgo.AllowedMentionType{},
+		},
+	}
 	if p.useReply {
-		reply, err = session.ChannelMessageSendReply(p.channelID, response, &discordgo.MessageReference{
+		msg.Reference = &discordgo.MessageReference{
 			MessageID: p.message.ID,
 			ChannelID: p.message.ChannelID,
 			GuildID:   p.message.GuildID,
-		})
-	} else {
-		reply, err = session.ChannelMessageSend(p.channelID, response)
+		}
 	}
+	reply, err = session.ChannelMessageSendComplex(p.channelID, msg)
 	if reply != nil {
 		p.replyID = reply.ID
 	}

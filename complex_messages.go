@@ -145,6 +145,9 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 			}
 			log.Debugf("InteractionRespond Message state %+v", msgContext)
 			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
+			msg["allowed_mentions"] = discordgo.MessageAllowedMentions{
+				Parse: []discordgo.AllowedMentionType{},
+			}
 			endpoint := discordgo.EndpointInteractionResponse(msgContext.Interaction.ID, msgContext.Interaction.Token)
 			_, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
 			if err != nil {
@@ -176,6 +179,9 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			ref := make(map[string]string, 1)
 			ref["message_id"] = msgContext.TriggerMessageID
 			msg["message_reference"] = ref
+			msg["allowed_mentions"] = discordgo.MessageAllowedMentions{
+				Parse: []discordgo.AllowedMentionType{},
+			}
 			log.Debugf("Sending message to channel %s: %v", chID, msg)
 			endpoint := discordgo.EndpointChannelMessages(chID)
 			response, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
