@@ -145,7 +145,7 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 			}
 			log.Debugf("InteractionRespond Message state %+v", msgContext)
 			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
-			msg["allowed_mentions"] = discordgo.MessageAllowedMentions{
+			msg["data"].(map[string]any)["allowed_mentions"] = discordgo.MessageAllowedMentions{
 				Parse: []discordgo.AllowedMentionType{},
 			}
 			endpoint := discordgo.EndpointInteractionResponse(msgContext.Interaction.ID, msgContext.Interaction.Token)
