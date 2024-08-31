@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -70,7 +71,7 @@ func Run(maxHistoryLength int) {
 	// Eval the library and save it.
 	opts := repl.EvalStringOptions()
 	opts.AutoSave = true // force saving the library to compact form even if autosave is off for user messages.
-	res, errs, _ := repl.EvalStringWithOption(opts, libraryCode)
+	res, errs, _ := repl.EvalStringWithOption(context.Background(), opts, libraryCode)
 	if len(errs) > 0 {
 		log.S(log.Critical, "Errors in library eval", log.Any("errors", errs))
 	}
@@ -297,7 +298,7 @@ func evalInput(input string, p *CommandParams) string {
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
-		evalres, errs, formatted := repl.EvalStringWithOption(cfg, input)
+		evalres, errs, formatted := repl.EvalStringWithOption(context.Background(), cfg, input)
 		if (p.formatMode || p.compactMode || p.debugParenMode) && formatted != "" {
 			res = formatModeStr
 			if p.compactMode {

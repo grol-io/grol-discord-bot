@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -110,7 +111,7 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		name, fn := InteractionRespondFunction(&st)
 		state.Extensions[name] = fn
 	}
-	res, errs, _ := repl.EvalStringWithOption(cfg, code)
+	res, errs, _ := repl.EvalStringWithOption(context.Background(), cfg, code)
 	log.Infof("Interaction (ignored) result: %q errs %v", res, errs)
 	if len(errs) > 0 {
 		p := &CommandParams{
