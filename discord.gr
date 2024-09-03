@@ -76,7 +76,8 @@ discord = {
   "interaction" : {
 		"update_message" : 7
 	},
-  "doInteraction" : (state, userId, map) => { // tic-tac-toe example
+  "doInteraction" : (msgId, userId, map) => { // tic-tac-toe example
+	state := discord_state[msgId]
 	if state == nil {
 		state = {
 			"board": tictactoe.empty_board,
@@ -130,11 +131,12 @@ discord = {
 		"type": discord.interaction.update_message,
 		"data": {"content": tag + " played " + clicked, "components": tictactoe.boardToComponents(state.board,i,j)}
 	})
-	state
+	// println("msgId", msgId, "New state", state)
+	discord_state[msgId] =  state // save state. annoyingly discord.state[msgId] = state doesn't work yet.
   }
 }
 
-state = {}
+discord_state = {}
 
 // ---- tic tac toe ----
 
