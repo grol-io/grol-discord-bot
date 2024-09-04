@@ -285,7 +285,7 @@ func Butterfly() {
 	saturation := 1
 	lightness := .6
 
-	size := 256
+	size := 512
 	imgName := "canvas"
 	canvas := image(imgName, size, size)
 	div := 6
