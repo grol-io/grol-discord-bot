@@ -9,6 +9,7 @@ import (
 	"fortio.org/log"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol/eval"
+	"grol.io/grol/extensions"
 	"grol.io/grol/object"
 	"grol.io/grol/repl"
 )
@@ -130,6 +131,7 @@ type MessageState struct {
 	TriggerMessageID string
 	// for interaction responses
 	Interaction *discordgo.Interaction
+	ImageMap    extensions.ImageMap
 }
 
 func InteractionRespondFunction(st *MessageState) (string, object.Extension) {

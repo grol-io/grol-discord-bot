@@ -250,7 +250,7 @@ func evalInput(input string, p *CommandParams) string {
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc..." +
-			" Try `TicTacToe()` for more advanced example that includes grol handling discord interactions and complex messages.\n\n" +
+			" Try `TicTacToe()` or `Butterfly()` for more advanced examples that includes grol handling discord interactions and complex messages.\n\n" +
 			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
 			" `-d` debug expressions)" +
 			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n" +
@@ -292,8 +292,11 @@ func evalInput(input string, p *CommandParams) string {
 				Session:          p.session,
 				ChannelID:        p.channelID,
 				TriggerMessageID: p.message.ID,
+				ImageMap:         state.Extensions["image"].ClientData.(extensions.ImageMap),
 			}
 			name, fn := ChannelMessageSendComplexFunction(&st)
+			state.Extensions[name] = fn
+			name, fn = SendImageFunction(&st)
 			state.Extensions[name] = fn
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
