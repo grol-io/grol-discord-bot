@@ -281,31 +281,34 @@ func hslToRgb(h, s, l) {
 
 msgId=""
 
-func Butterfly() {
-	saturation := 1
-	lightness := .6
+// With angle as an int modulo 360 input, this gets memoized.
+func ycbcr(angle) {
+	angle = PI * angle / 180.
+	// Y   Cb  Cr
+	[190, 128 + 120*sin(angle), 128 + 120*cos(angle)]
+}
 
-	size := 512
+func Butterfly() {
+	butterfly(550, 350)
+}
+func butterfly(xsize, ysize) {
 	imgName := "canvas"
-	canvas := image(imgName, size, size)
+	canvas := image(imgName, xsize, ysize)
 	div := 6
 
-	t := 0
+
+	// Also from grol's example/image.gr
+	// with inspiration @shokhie + our colorful version etc...
+
 	now := time()
-	hue := 0
-	lastHue := -99
 
-	// inspiration @shokhie + our hue / hsl etc...
-
+	t := 0
 	for t < 12*PI {
 		x := sin(t) * (pow(E, cos(t)) - 2*cos(4*t) - pow(sin(t/12), 5))
 		y := cos(t) * (pow(E, cos(t)) - 2*cos(4*t) - pow(sin(t/12), 5))
-		if t > lastHue + PI/12. { // 144 values
-			lastHue = t
-			hue = t/(12.*PI)
-			color = hslToRgb(hue, saturation, lightness)
-		}
-		image_set(imgName, int(size/2+(size/div)*x+0.5), int(size/2.5+(size/div)*y+0.5), color)
+		angle := int(t*180./PI) % 360 // so ycbr() get memoized with 360 values
+		color = ycbcr(angle)
+		image_set_ycbcr(canvas, int(xsize/2+(xsize/div)*x+0.5), int(ysize/2.5+(ysize/div)*y+0.5), color)
 		t = t + 0.0005
 	}
 	elapsed := time() - now
