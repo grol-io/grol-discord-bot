@@ -243,42 +243,6 @@ func TicTacToe() {
 
 // --- Image demo ---
 
-
-func hue2rgb(p, q, t) {
-    if t < 0 {
-        t++
-    }
-    if t > 1 {
-        t--
-    }
-    if t < 1. / 6. {
-        return p + (q - p) * 6. * t
-    }
-    if t < 1. / 2. {
-        return q
-    }
-    if t < 2. / 3. {
-        return p + (q - p) * (2. / 3. - t) * 6.
-    }
-    return p
-}
-
-func hslToRgb(h, s, l) {
-    if s == 0 {
-        return [l * 255, l * 255, l * 255]  // Achromatic
-    }
-    if l < 0.5 {
-        q = l * (1. + s)
-    } else {
-        q = l + s - l * s
-    }
-    p = 2. * l - q
-    r = hue2rgb(p, q, h + 1. / 3.)
-    g = hue2rgb(p, q, h)
-    b = hue2rgb(p, q, h - 1. / 3.)
-    return [int(round(r * 255)), int(round(g * 255)), int(round(b * 255))]
-}
-
 msgId=""
 
 // With angle as an int modulo 360 input, this gets memoized.
@@ -309,6 +273,7 @@ func butterfly(xsize, ysize) {
 		angle := int(t*180./PI) % 360 // so ycbr() get memoized with 360 values
 		color = ycbcr(angle)
 		image_set_ycbcr(canvas, int(xsize/2+(xsize/div)*x+0.5), int(ysize/2.5+(ysize/div)*y+0.5), color)
+		// could use image_set_hsl too.
 		t = t + 0.0005
 	}
 	elapsed := time() - now
