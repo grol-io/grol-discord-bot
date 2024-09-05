@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"image/png"
 
 	"fortio.org/log"
@@ -27,7 +26,7 @@ func SendImageFunction(st *MessageState) (string, object.Extension) {
 			imgName := args[0].(object.String).Value
 			img, ok := msgContext.ImageMap[args[0]]
 			if !ok {
-				return object.Error{Value: fmt.Sprintf("image not found: %s", imgName)}
+				return object.Errorf("image not found: %q", imgName)
 			}
 			buf := bytes.Buffer{}
 			_ = png.Encode(&buf, img)
@@ -40,7 +39,7 @@ func SendImageFunction(st *MessageState) (string, object.Extension) {
 			log.Debugf("Sending image to channel %s: %v", chID, msg)
 			if err != nil {
 				log.Errf("Error sending message: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error sending message: %v", err)}
+				return object.Errorf("Error sending message: %v", err)
 			}
 			updateMap(msgContext.TriggerMessageID, response.ID)
 			return object.String{Value: response.ID}

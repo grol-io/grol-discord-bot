@@ -155,7 +155,7 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 			_, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
 			if err != nil {
 				log.Errf("Error sending interaction response: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error sending interaction response: %v", err)}
+				return object.Errorf("Error sending interaction response: %v", err)
 			}
 			return object.NULL
 		},
@@ -190,13 +190,13 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			response, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
 			if err != nil {
 				log.Errf("Error sending message: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error sending message: %v", err)}
+				return object.Errorf("Error sending message: %v", err)
 			}
 			var m discordgo.Message
 			err = json.Unmarshal(response, &m)
 			if err != nil {
 				log.Errf("Error unmarshalling message: %v", err)
-				return object.Error{Value: fmt.Sprintf("Error unmarshalling message: %v", err)}
+				return object.Errorf("Error unmarshalling message: %v", err)
 			}
 			updateMap(msgContext.TriggerMessageID, m.ID)
 			return object.String{Value: m.ID}
