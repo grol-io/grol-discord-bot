@@ -10,7 +10,6 @@ import (
 
 	"fortio.org/cli"
 	"fortio.org/log"
-	"fortio.org/scli"
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol-discord-bot/fixedmap"
@@ -79,7 +78,12 @@ func Run(maxHistoryLength int) {
 
 	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin)
 	// keep bot running until there is NO os interruption (ctrl + C)
-	scli.UntilInterrupted()
+	cli.UntilInterrupted()
+	err = session.Close()
+	if err != nil {
+		log.Errf("Error closing session: %v", err)
+	}
+	log.Infof("Bot is now stopped and exiting.")
 }
 
 func IsThisBot(id string) bool {
