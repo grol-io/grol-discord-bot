@@ -1,6 +1,6 @@
 module grol.io/grol-discord-bot
 
-go 1.22.6
+go 1.22.7
 
 require (
 	fortio.org/cli v1.9.0
@@ -8,7 +8,7 @@ require (
 	fortio.org/scli v1.15.2
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
-	grol.io/grol v0.65.0
+	grol.io/grol v0.66.0
 )
 
 // replace grol.io/grol => ../grol

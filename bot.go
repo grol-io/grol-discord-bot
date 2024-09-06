@@ -10,7 +10,6 @@ import (
 
 	"fortio.org/cli"
 	"fortio.org/log"
-	"fortio.org/scli"
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol-discord-bot/fixedmap"
@@ -31,7 +30,7 @@ var (
 
 const Unknown = "unknown"
 
-func Run(maxHistoryLength int) {
+func Run(maxHistoryLength int) int {
 	botStartTime = time.Now()
 	extCfg := extensions.Config{
 		HasLoad:           true,
@@ -60,10 +59,13 @@ func Run(maxHistoryLength int) {
 	// open session
 	err = session.Open()
 	if err != nil {
-		log.Fatalf("Init discordgo.Open error: %v", err)
+		return log.FErrf("Init discordgo.Open error: %v", err)
 	}
 	defer session.Close() // close session, after function termination
 
+	if session.State.User == nil {
+		return log.FErrf("Bot (self) user not found")
+	}
 	selfID = session.State.User.ID
 
 	registerCommands(session)
@@ -79,7 +81,13 @@ func Run(maxHistoryLength int) {
 
 	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin)
 	// keep bot running until there is NO os interruption (ctrl + C)
-	scli.UntilInterrupted()
+	cli.UntilInterrupted()
+	err = session.Close()
+	if err != nil {
+		log.Errf("Error closing session: %v", err)
+	}
+	log.Infof("Bot is now stopped and exiting.")
+	return 0
 }
 
 func IsThisBot(id string) bool {
@@ -250,7 +258,8 @@ func evalInput(input string, p *CommandParams) string {
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc..." +
-			" Try `TicTacToe()` for more advanced example that includes grol handling discord interactions and complex messages.\n\n" +
+			" Try `TicTacToe()` or `Butterfly()` for more advanced examples that includes grol handling discord interactions" +
+			" and complex messages.\n\n" +
 			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
 			" `-d` debug expressions)" +
 			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n" +
@@ -292,8 +301,11 @@ func evalInput(input string, p *CommandParams) string {
 				Session:          p.session,
 				ChannelID:        p.channelID,
 				TriggerMessageID: p.message.ID,
+				ImageMap:         state.Extensions["image"].ClientData.(extensions.ImageMap),
 			}
 			name, fn := ChannelMessageSendComplexFunction(&st)
+			state.Extensions[name] = fn
+			name, fn = SendImageFunction(&st)
 			state.Extensions[name] = fn
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
@@ -690,8 +702,14 @@ func scheduleReset(s *discordgo.Session) {
 				log.Critf("Cannot delete '%v' command: %v", v.Name, err)
 			}
 		}
-		delay := 3 * time.Second
-		log.Infof("All %d commands deleted, waiting %s before resetting", len(registeredCommands), delay)
+		delay := 1 * time.Second
+		log.Infof("All %d commands deleted, sleeping %v before closing session.", len(registeredCommands), delay)
+		time.Sleep(delay)
+		err = s.Close()
+		if err != nil {
+			log.Critf("Error closing session: %v", err)
+		}
+		log.Infof("Session closed, waiting %s before resetting", delay)
 		time.Sleep(delay)
 		log.Critf("Resetting bot now")
 		// unlink the .gr file to cleanup state.
