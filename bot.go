@@ -30,7 +30,7 @@ var (
 
 const Unknown = "unknown"
 
-func Run(maxHistoryLength int) {
+func Run(maxHistoryLength int) int {
 	botStartTime = time.Now()
 	extCfg := extensions.Config{
 		HasLoad:           true,
@@ -59,12 +59,12 @@ func Run(maxHistoryLength int) {
 	// open session
 	err = session.Open()
 	if err != nil {
-		log.Fatalf("Init discordgo.Open error: %v", err)
+		return log.FErrf("Init discordgo.Open error: %v", err)
 	}
 	defer session.Close() // close session, after function termination
 
 	if session.State.User == nil {
-		log.Fatalf("Bot (self) user not found")
+		return log.FErrf("Bot (self) user not found")
 	}
 	selfID = session.State.User.ID
 
@@ -87,6 +87,7 @@ func Run(maxHistoryLength int) {
 		log.Errf("Error closing session: %v", err)
 	}
 	log.Infof("Bot is now stopped and exiting.")
+	return 0
 }
 
 func IsThisBot(id string) bool {
@@ -701,8 +702,14 @@ func scheduleReset(s *discordgo.Session) {
 				log.Critf("Cannot delete '%v' command: %v", v.Name, err)
 			}
 		}
-		delay := 3 * time.Second
-		log.Infof("All %d commands deleted, waiting %s before resetting", len(registeredCommands), delay)
+		delay := 1 * time.Second
+		log.Infof("All %d commands deleted, sleeping %v before closing session.", len(registeredCommands), delay)
+		time.Sleep(delay)
+		err = s.Close()
+		if err != nil {
+			log.Critf("Error closing session: %v", err)
+		}
+		log.Infof("Session closed, waiting %s before resetting", delay)
 		time.Sleep(delay)
 		log.Critf("Resetting bot now")
 		// unlink the .gr file to cleanup state.
