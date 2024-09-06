@@ -63,6 +63,9 @@ func Run(maxHistoryLength int) {
 	}
 	defer session.Close() // close session, after function termination
 
+	if session.State.User == nil {
+		log.Fatalf("Bot (self) user not found")
+	}
 	selfID = session.State.User.ID
 
 	registerCommands(session)
