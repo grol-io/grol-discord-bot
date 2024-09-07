@@ -301,7 +301,7 @@ func evalInput(input string, p *CommandParams) string {
 				Session:          p.session,
 				ChannelID:        p.channelID,
 				TriggerMessageID: p.message.ID,
-				ImageMap:         state.Extensions["image"].ClientData.(extensions.ImageMap),
+				ImageMap:         state.Extensions["image.new"].ClientData.(extensions.ImageMap),
 			}
 			name, fn := ChannelMessageSendComplexFunction(&st)
 			state.Extensions[name] = fn
