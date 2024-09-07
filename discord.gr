@@ -261,7 +261,7 @@ func Butterfly() {
 
 func butterfly(xsize, ysize) {
 	imgName := "canvas"
-	canvas := image(imgName, xsize, ysize)
+	canvas := image.new(imgName, xsize, ysize)
 	div := 6
 	now := time()
 	t := 0
@@ -270,8 +270,8 @@ func butterfly(xsize, ysize) {
 		y := cos(t) * (pow(E, cos(t)) - 2*cos(4*t) - pow(sin(t/12), 5))
 		angle := int(t*180./PI) % 360 // so ycbr() get memoized with 360 values
 		color = ycbcr(angle)
-		image_set_ycbcr(canvas, int(xsize/2+(xsize/div)*x+0.5), int(ysize/2.5+(ysize/div)*y+0.5), color)
-		// could use image_set_hsl() too.
+		image.set_ycbcr(canvas, int(xsize/2+(xsize/div)*x+0.5), int(ysize/2.5+(ysize/div)*y+0.5), color)
+		// could use image.set_hsl() too.
 		t = t + 0.0005
 	}
 	elapsed := time() - now
