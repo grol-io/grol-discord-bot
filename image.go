@@ -29,7 +29,7 @@ func SendImageFunction(st *MessageState) (string, object.Extension) {
 				return object.Errorf("image not found: %q", imgName)
 			}
 			buf := bytes.Buffer{}
-			_ = png.Encode(&buf, img)
+			_ = png.Encode(&buf, img.Image)
 			msg := discordgo.MessageSend{File: &discordgo.File{Name: args[0].(object.String).Value + ".png", Reader: &buf}}
 			msg.AllowedMentions = &discordgo.MessageAllowedMentions{
 				Parse: []discordgo.AllowedMentionType{},

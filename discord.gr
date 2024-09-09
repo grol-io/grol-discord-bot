@@ -280,6 +280,167 @@ func butterfly(xsize, ysize) {
 	msgId = SendImage(imgName)
 }
 
+// -- bezier and circles --
+
+func sign(x) {
+	if x < 0 {-1} else {1}
+}
+
+func circleQuadrant(img, x, y, rx, ry, color, thickness) {
+	quadrant(img, x, y, rx, ry, thickness)
+	image.draw(img, color)
+}
+
+func quadrant(img, x, y, rx, ry, thickness) {
+	sign = sign
+	x = round(x)+.5 // semi magic adjustment that makes the bezier circle and trueCircle match
+	y = round(y)+.5
+	a := 1.00005519
+	b := 0.55342686
+	c := 0.99873585
+	thickness = thickness / 2.
+	ythickness := thickness
+	if sign(rx) != sign(ry) {
+		ythickness = -thickness
+	}
+	p0x := x + rx*a - thickness
+	p0y := y
+	image.move_to(img, p0x, p0y)
+	image.line_to(img, p0x+2*thickness, p0y)
+	rx = rx + thickness
+	ry = ry + ythickness
+	p2x := x + rx*b
+	p2y := y + ry*c
+	p1x := x + rx*c
+	p1y := y + ry*b
+	p3x := x
+	p3y := y + ry*a
+	image.cube_to(img, p1x, p1y, p2x, p2y, p3x, p3y)
+	rx = rx - 2*thickness
+	ry = ry - 2*ythickness
+	p3y := y + ry*a
+	image.line_to(img, x, p3y)
+	p2x := x + rx*b
+	p2y := y + ry*c
+	p1x := x + rx*c
+	p1y := y + ry*b
+	image.cube_to(img, p2x, p2y, p1x, p1y, p0x, p0y)
+	// image.line_to(img, x, y) // covered by close_path in draw
+}
+
+func elipse(img, x,y,rx,ry,color,thickness) {
+	quadrant(img, x,y,rx,ry,thickness)
+	quadrant(img, x,y,rx,-ry,thickness)
+	quadrant(img, x,y,-rx,ry,thickness)
+	quadrant(img, x,y,-rx,-ry,thickness)
+	image.draw(img, color)
+}
+
+func circle(img, x,y,r,color,thickness) {
+	elipse(img, x,y,r,r,color,thickness)
+}
+
+func CircleDemo() {
+	xsize:=256
+	ysize:=256
+
+	img := "canvas"
+	image.new(img, xsize, ysize)
+
+	cx := xsize/2.-0.5
+	cy := ysize/2.-0.5
+
+	thickness := ysize/5
+	r := ysize/2-thickness
+
+	circleQuadrant(img, cx, cy, r, r, [200,70,70,200], thickness)
+	circleQuadrant(img, cx, cy, -r, -r, [70,200,70,200], thickness)
+	circleQuadrant(img, cx, cy, -r, r, [70,70,200,200], thickness)
+	circleQuadrant(img, cx, cy, r, -r, [200,200,70,200], thickness)
+	r := ysize/2-0.5
+	circle(img, cx, cy, r, [200,200,200,180], 1)
+	msgId = SendImage(img)
+}
+
+// - plot random points
+
+func line(img, x1, y1, x2, y2, color, thickness) {
+	angle := atan2(y2-y1, x2-x1) + PI/2
+	dx := thickness*cos(angle)/2.
+	dy := thickness*sin(angle)/2.
+	image.move_to(img, x1-dx, y1-dy)
+	image.line_to(img, x2-dx, y2-dy)
+	image.line_to(img, x2+dx, y2+dy)
+	image.line_to(img, x1+dx, y1+dy)
+	image.draw(img, color)
+}
+
+func PlotBezierDemo() {
+	i := "img"
+	x:=550
+	y:=350
+	image.new(i, x, y)
+
+	// generate a list of N point heights.
+	n:=8
+
+	points := []
+	for n {
+		points = points + (20 + rand(310))
+	}
+
+	func coordX(idx) {
+		8+idx*75
+	}
+	func coordY(height) {
+		y-8-height
+	}
+
+
+	// flat start of bezier curve - imaginary point at -1 same height as first point
+	ix := -1
+	prevX := coordX(-1)
+	curX := coordX(0)
+	curY := coordY(points[0])
+	ctrlX1 = 2*curX - (prevX + curX) / 2.
+	ctrlY1 = curY
+
+	ix := 0
+	image.move_to(i, curX, coordY(0))
+	image.line_to(i, curX, curY)
+	ix ++
+	prevX = curX
+	prevY = curY
+	for ix < n {
+		curX := coordX(ix)
+		curY := coordY(points[ix])
+		ctrlX2 := (prevX + 3* curX) / 4.
+		ctrlY2 := (prevY + 3* curY) / 4.
+		if ix == n-1 { // flatter end.
+			ctrlX2 = (prevX + curX) / 2
+			ctrlY2 = curY
+		}
+		image.cube_to(i, ctrlX1, ctrlY1, ctrlX2, ctrlY2, curX, curY)
+		prevX = curX
+		prevY = curY
+		ctrlX1 = 2* curX - ctrlX2
+		ctrlY1 = 2* curY - ctrlY2
+		ix++
+	}
+	image.line_to(i, coordX(n-1), coordY(0))
+	image.draw(i, [30,120,200,200])
+
+	color := [200,200,200,80]
+	for ix = n-1 {
+		yi := points[ix]
+		yp1 := points[ix+1]
+		log(ix, yi, yp1)
+		line(i, coordX(ix), coordY(yi), coordX(ix+1), coordY(yp1), color, 4)
+	}
+	msgId = SendImage(i)
+}
+
+
 // ------- Misc stuff ----
 
 func layout(){
