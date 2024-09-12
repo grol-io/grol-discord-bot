@@ -91,11 +91,12 @@ discord = {
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {"content": "<@" + userId + "> has reset the board", "components": tictactoe.boardToComponents(tictactoe.empty_board,-1,-1)}})
-		return nil // clear state
+		discord_state[msgId] = nil
+		return
 	}
 	if state.end != nil || state.turn >= 9 {
 		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": "Game is over <@" + userId + ">"}})
-		return state
+		return
 	}
 	state.turn = state.turn + 1 // no ++ on map/indexes yet.
 	tag = "<@" + userId + ">"
@@ -113,7 +114,7 @@ discord = {
 	}
 	if state.board[i][j] != "" {
 		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied"}})
-		return state
+		return
 	}
 	board = state.board
 	row = board[i]
@@ -263,7 +264,7 @@ func butterfly(xsize, ysize) {
 	imgName := "canvas"
 	canvas := image.new(imgName, xsize, ysize)
 	div := 6
-	now := time()
+	now := time.now()
 	t := 0
 	for t < 12*PI {
 		x := sin(t) * (pow(E, cos(t)) - 2*cos(4*t) - pow(sin(t/12), 5))
@@ -274,7 +275,7 @@ func butterfly(xsize, ysize) {
 		// could use image.set_hsl() too.
 		t = t + 0.0005
 	}
-	elapsed := time() - now
+	elapsed := time.now() - now
 	println("Time elapsed: ", elapsed, " seconds")
 	msgId = msgId // bind to top level/global
 	msgId = SendImage(imgName)
