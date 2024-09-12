@@ -96,7 +96,7 @@ discord = {
 	}
 	if state.end != nil || state.turn >= 9 {
 		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": "Game is over <@" + userId + ">"}})
-		return state
+		return
 	}
 	state.turn = state.turn + 1 // no ++ on map/indexes yet.
 	tag = "<@" + userId + ">"
@@ -114,7 +114,7 @@ discord = {
 	}
 	if state.board[i][j] != "" {
 		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied"}})
-		return state
+		return
 	}
 	board = state.board
 	row = board[i]
