@@ -203,7 +203,7 @@ tictactoe = {
 			if check == nil {
 				continue
 			}
-			freeList = freeList + [[i+0,j+0]] // register issue with reference to i,j - TODO fix so it's not necessary.
+			freeList = freeList + [[i,j]]
 			if tictactoe.endGame(check) != nil {
 				log("Win by", next, "at", i, j)
 				return [i,j]
