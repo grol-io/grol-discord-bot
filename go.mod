@@ -3,9 +3,9 @@ module grol.io/grol-discord-bot
 go 1.22.7
 
 require (
-	fortio.org/cli v1.9.0
-	fortio.org/log v1.16.0
-	fortio.org/scli v1.15.2
+	fortio.org/cli v1.9.2
+	fortio.org/log v1.17.1
+	fortio.org/scli v1.15.3
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
 	grol.io/grol v0.75.0
@@ -14,7 +14,7 @@ require (
 // replace grol.io/grol => ../grol
 
 require (
-	fortio.org/dflag v1.7.2 // indirect
+	fortio.org/dflag v1.7.3 // indirect
 	fortio.org/safecast v1.0.0 // indirect
 	fortio.org/sets v1.2.0 // indirect
 	fortio.org/struct2env v0.4.1 // indirect
