@@ -8,7 +8,7 @@ require (
 	fortio.org/scli v1.15.3
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
-	grol.io/grol v0.75.1
+	grol.io/grol v0.75.2
 )
 
 // replace grol.io/grol => ../grol
