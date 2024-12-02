@@ -307,6 +307,7 @@ func evalInput(input string, p *CommandParams) string {
 			state.Extensions[name] = fn
 			name, fn = SendImageFunction(&st)
 			state.Extensions[name] = fn
+			delete(state.Extensions, "read") // remove the read function from the extensions.
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
