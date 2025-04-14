@@ -24,7 +24,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250406160420-959f8f3db0fb // indirect
 	golang.org/x/image v0.26.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
