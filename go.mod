@@ -8,7 +8,7 @@ require (
 	fortio.org/scli v1.16.1
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
-	grol.io/grol v0.80.3
+	grol.io/grol v0.80.4
 )
 
 // replace grol.io/grol => ../grol
@@ -19,7 +19,7 @@ require (
 	fortio.org/sets v1.3.0 // indirect
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/term v0.29.0-fortio-1 // indirect
-	fortio.org/terminal v0.29.1 // indirect
+	fortio.org/terminal v0.30.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/kortschak/goroutine v1.1.2 // indirect
