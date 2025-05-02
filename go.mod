@@ -8,7 +8,7 @@ require (
 	fortio.org/scli v1.16.1
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
-	grol.io/grol v0.84.1
+	grol.io/grol v0.85.0
 )
 
 // replace grol.io/grol => ../grol
@@ -28,4 +28,5 @@ require (
 	golang.org/x/image v0.26.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/term v0.31.1-0.20250421193057-a809085bff59 // indirect
+	golang.org/x/text v0.24.0 // indirect
 )

@@ -44,6 +44,8 @@ golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9sn
 golang.org/x/term v0.31.1-0.20250421193057-a809085bff59 h1:VvEs4+4zlvlqhfwqiC06eDyr3q44VP9bioP96d7Vtyo=
 golang.org/x/term v0.31.1-0.20250421193057-a809085bff59/go.mod h1:R4BeIy7D95HzImkxGkTW1UQTtP54tio2RyHz7PwK0aw=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
+golang.org/x/text v0.24.0 h1:dd5Bzh4yt5KYA8f9CJHCP4FB4D51c2c6JvN37xJJkJ0=
+golang.org/x/text v0.24.0/go.mod h1:L8rBsPeo2pSS+xqN0d5u2ikmjtmoJbDBT1b7nHvFCdU=
 golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
-grol.io/grol v0.84.1 h1:jL14KFBsFNSCKkZey/VB/ncQ2+QqJlZWmcZG99mCqWI=
-grol.io/grol v0.84.1/go.mod h1:gS8j3jIOV7kOmSs/Gx0W1nCQqAeHwi9Z23yghWMdvP8=
+grol.io/grol v0.85.0 h1:w8qZkrl/En5AqRAxSTPcEy9yZpQ+NxUJYRHECjcVp7k=
+grol.io/grol v0.85.0/go.mod h1:HocGFKVDFqx/57anqTtJNXHMD8BhUDR3t6FL6J8BH/c=
