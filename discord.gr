@@ -239,6 +239,296 @@ func TicTacToe() {
 	tictactoe.sendBoard(tictactoe.empty_board)
 }
 
+// --- Black jack ---
+
+blackjack = {
+	"validStates": ["player_turn", "dealer_turn", "game_over"],
+
+	"state": {},
+
+	"send": state => {
+		msg = {
+			"content":    "Blackjack!",
+			"components": blackjack.stateToComponents(state)
+		}
+		ChannelMessageSendComplex(msg)
+		},
+
+	"stateToComponents": state => {
+		components = []
+		for i = 0:len(state.player) {
+			components = components + [blackjack.cardToComponent(state.player[i])]
+		}
+		components +
+		[discord.actionRow([discord.button("Hit",discord.buttonStyle.success,"hit"), discord.button("Stand", discord.buttonStyle.primary, "stand")])]
+	},
+
+	"initial_state": {
+		"player": [],
+		"dealer": [],
+		"state": "player_turn",
+		"message": "",
+		"balance": 1000,
+		"bet": 100
+	}
+}
+
+
+func Blackjack() {
+	blackjack.send(blackjack.initial_state)
+}
+
+// --- Card demo ---
+// Fancier heart shape based on SVG quadratic commands translated to grol.
+// All Y coordinates will be flipped if upsideDown is true
+func drawHeartPath(img, x, y, w, h, upsideDown) {
+    x = round(x) + 0.5
+    y = round(y) + 0.5
+    // Scale factors, original svg was 20x20
+    sx := w / 20.0
+    sy := h / 20.0
+    // Helper lambda to flip Y coordinates if upsideDown
+    flipY := func(svgY) {
+        if upsideDown {
+            return (20.0 - svgY) * sy + y
+        }
+        return svgY * sy + y
+    }
+    // M10,6
+    image.move_to(img, x + 10 * sx, flipY(6))
+    // Q10,0 15,0
+    image.quad_to(img, x + 10 * sx, flipY(0), x + 15 * sx, flipY(0))
+    // Q20,0 20,6
+    image.quad_to(img, x + 20 * sx, flipY(0), x + 20 * sx, flipY(6))
+    // Q20,10 15,14
+    image.quad_to(img, x + 20 * sx, flipY(10), x + 15 * sx, flipY(14))
+    // Q10,18 10,20
+    image.quad_to(img, x + 10 * sx, flipY(18), x + 10 * sx, flipY(20))
+    // Q10,18 5,14
+    image.quad_to(img, x + 10 * sx, flipY(18), x + 5 * sx, flipY(14))
+    // Q0,10 0,6
+    image.quad_to(img, x + 0, flipY(10), x + 0, flipY(6))
+    // Q0,0 5,0
+    image.quad_to(img, x + 0, flipY(0), x + 5 * sx, flipY(0))
+    // Q10,0 10,6
+    image.quad_to(img, x + 10 * sx, flipY(0), x + 10 * sx, flipY(6))
+    image.close_path(img)
+}
+
+// Function to draw a filled heart
+func drawHeart(img, x, y, w, h, color, upsideDown) {
+    drawHeartPath(img, x, y, w, h, upsideDown)
+    image.draw(img, color)
+}
+
+// Function to define the path for a diamond shape
+func drawDiamondPath(img, x, y, w, h) {
+    // Calculate center point
+    centerX := x + w/2.0
+    centerY := y + h/2.0
+    // Points at top, right, bottom, left
+    topX := centerX
+    topY := y
+    rightX := x + w
+    rightY := centerY
+    bottomX := centerX
+    bottomY := y + h
+    leftX := x
+    leftY := centerY
+    // Control points offset - same percentage for both directions
+    offset := w * 0.2  // 20% of width for both horizontal and vertical offset
+    // Draw the diamond shape with curves
+    image.move_to(img, topX, topY)
+    // Top right curve
+    image.quad_to(img,
+        topX + offset, rightY - offset,  // Control point moved inside
+        rightX, rightY
+    )
+    // Bottom right curve
+    image.quad_to(img,
+        bottomX + offset, rightY + offset,  // Control point moved inside
+        bottomX, bottomY
+    )
+    // Bottom left curve
+    image.quad_to(img,
+        bottomX - offset, leftY + offset,  // Control point moved inside
+        leftX, leftY
+    )
+    // Top left curve
+    image.quad_to(img,
+        topX - offset, leftY - offset,  // Control point moved inside
+        topX, topY
+    )
+    image.close_path(img)
+}
+
+// Function to draw a filled diamond
+func drawDiamond(img, x, y, w, h, color) {
+    // Adjust dimensions for better diamond proportions
+    adjustedW := w * 0.85
+    adjustedH := h * 1.1
+    // Adjust x position to keep diamond centered with original width
+    adjustedX := x + (w - adjustedW)/2
+    adjustedY := y + (h - adjustedH)/2
+    drawDiamondPath(img, adjustedX, adjustedY, adjustedW, adjustedH)
+    image.draw(img, color)
+}
+
+// Function to draw a filled club
+func drawClub(img, x, y, w, h, color, upsideDown) {
+    if upsideDown {
+        // If upside down, flip the y coordinate and drawing order
+        y = y + h
+        h = -h
+    }
+    // Scale factors
+    sx := w / 20.0
+    sy := h / 20.0
+    // Circle radius (relative to width)
+    radius := w * 0.23
+    // Draw the three circles with adjusted spacing
+    // Top circle
+    centerX := x + w/2.0
+    topY := y + h * 0.22
+    drawDisc(img, centerX, topY, radius, color)
+    // Bottom left circle - tighter spacing
+    leftX := centerX - radius * 1.1
+    bottomY := y + h * 0.56
+    drawDisc(img, leftX, bottomY, radius, color)
+    // Bottom right circle
+    rightX := centerX + radius * 1.1
+    drawDisc(img, rightX, bottomY, radius, color)
+    // Draw stem below circles - even more pointed
+    stemH := h * 0.675
+    stemY := y + h * 0.335
+    stemW := w * 0.3
+    drawTriangle(img, centerX, stemY, stemW, stemH, color)
+    // Draw a small rectangle to fill the gap
+    rectW := w * 0.2
+    rectH := h * 0.2
+    rectX := x + (w-rectW)/2
+    rectY := y + h * 0.31
+    drawRect(img, rectX, rectY, rectW, rectH, color)
+}
+
+// Function to draw a filled spade
+func drawSpade(img, x, y, w, h, color, upsideDown) {
+    if upsideDown {
+        // If upside down, flip the y coordinate and drawing order
+        y = y + h
+        h = -h
+    }
+    // Draw inverted heart for top part
+    heartW := w
+    heartH := h * 0.85
+    drawHeartPath(img, x - (heartW - w)/2, y, heartW, heartH, true)  // Always true for spade (removed !upsideDown)
+    image.draw(img, color)
+    // Draw stem below heart
+    stemH := h * 0.5
+    stemY := y + heartH * 0.65
+    drawTriangle(img,  x + w/2.0, stemY, w/3.0, stemH, color)
+}
+
+suits := ["♥", "♦", "♣", "♠"]
+hearts := suits[0]
+diamonds := suits[1]
+clubs := suits[2]
+spades := suits[3]
+cards := ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
+
+func card(img, x, y, w, h, suit, face) {
+    // Draw card background
+    roundedRect(img, x, y, w, h, 10)
+    image.draw(img, [255, 255, 255])
+    // Calculate suit positions
+    suitSize := h * 0.15
+    suitMargin := h * 0.05
+    topLeftX := x + suitMargin
+    topLeftY := y + suitMargin
+    bottomRightX := x + w - suitMargin - suitSize
+    bottomRightY := y + h - suitMargin - suitSize
+    color := [0, 0, 0] // black
+    // Draw suits based on card index
+    if suit == "♥" {
+        // Hearts
+        color = [255, 0, 0] // red
+        drawHeart(img, topLeftX, topLeftY, suitSize, suitSize, color, false)
+        drawHeart(img, bottomRightX, bottomRightY, suitSize, suitSize, color, true)
+    } else if suit == "♦" {
+        // Diamonds
+        color = [255, 0, 0] // red
+        drawDiamond(img, topLeftX, topLeftY, suitSize, suitSize, color)
+        drawDiamond(img, bottomRightX, bottomRightY, suitSize, suitSize, color)
+    } else if suit == "♣" {
+        // Clubs
+        drawClub(img, topLeftX, topLeftY, suitSize, suitSize, color, false)
+        drawClub(img, bottomRightX, bottomRightY, suitSize, suitSize, color, true)
+    } else if suit == "♠" {
+        // Spades
+        drawSpade(img, topLeftX, topLeftY, suitSize, suitSize, color, false)
+        drawSpade(img, bottomRightX, bottomRightY, suitSize, suitSize, color, true)
+    }
+    // Draw face value
+    faceSize := h * 0.333
+    faceX := x + w / 2
+    faceY := y + h / 2
+    center_text(img, faceX, faceY, face, {
+        "size": faceSize,
+        "color": color,
+        "variant": "bold"
+    })
+}
+
+func CardDemo() {
+	FourCards([["A","♥"], ["K","♣"], ["Q","♠"], ["J","♦"]])
+}
+
+func randomCard() {
+	card := cards[rand(len(cards))]
+	suit := suits[rand(len(suits))]
+	[card, suit]
+}
+
+func RandomCards() {
+	rcards := []
+	for i = 4 {
+		rcards = rcards + [randomCard()]
+	}
+	FourCards(rcards)
+}
+
+func FourCards(cards) {
+	// Create a new image
+	cardW := 300.0  // Larger card width
+	cardH := 400.0  // Larger card height
+	margin := 20.0  // Margin between cards and edges
+	suitSize := 60.0  // Base suit size
+	suitMargin := 25.0  // Reduced margin for suits within cards
+
+	// Calculate total width and height needed
+	w := 2.0 * cardW + 3.0 * margin  // Two cards wide plus margins
+	h := 2.0 * cardH + 3.0 * margin  // Two cards tall plus margins
+	img = image.new("cards", round(w), round(h))
+
+	// Draw each suit 2x2 grid
+	i := 0
+	for c := cards {
+		suit := c[1]
+		face := c[0]
+		// Calculate card position (2x2 grid)
+		row := i / 2  // 0 for top row, 1 for bottom row
+		col := i % 2  // 0 for left column, 1 for right column
+		cardX := margin + col * (cardW + margin)
+		cardY := margin + row * (cardH + margin)
+
+		card(img, cardX, cardY, cardW, cardH, suit, face)
+		i++
+	}
+	msgId = SendImage(img)
+}
+
+// --- Blackjack ---
+
 // --- Image demo ---
 
 // Also from grol's example/image.gr
@@ -278,7 +568,71 @@ func butterfly(xsize, ysize) {
 	msgId = SendImage(imgName)
 }
 
-// -- bezier and circles --
+// -- drawing utilities: shapes, bezier and circles --
+
+// Rounded corner rectangle
+func roundedRect(img, x, y, w, h, r) {
+	image.move_to(img, x + r, y)
+	image.line_to(img, x + w - r, y)
+	image.quad_to(img, x + w, y, x + w, y + r)
+	image.line_to(img, x + w, y + h - r)
+	image.quad_to(img, x + w, y + h, x + w - r, y + h)
+	image.line_to(img, x + r, y + h)
+	image.quad_to(img, x, y + h, x, y + h - r)
+	image.line_to(img, x, y + r)
+	image.quad_to(img, x, y, x + r, y)
+	image.close_path(img)
+}
+
+
+func discQuadrant(img, x, y, rx, ry, color) {
+    x = round(x) + 0.5
+    y = round(y) + 0.5
+	a := 1.00005519
+	b := 0.55342686
+	c := 0.99873585
+	p0x := x + rx*a
+	p0y := y
+	image.move_to(img, x, y)
+	image.line_to(img, p0x, p0y)
+	p2x := x + rx*b
+	p2y := y + ry*c
+	p1x := x + rx*c
+	p1y := y + ry*b
+	p3x := x
+	p3y := y + ry*a
+	image.cube_to(img, p1x, p1y, p2x, p2y, p3x, p3y)
+	// image.line_to(img, x, y) // covered by close_path in draw
+	image.draw(img, color)
+}
+
+// Function to draw a complete circle using discQuadrant
+func drawDisc(img, x, y, radius, color) {
+	// Draw all four quadrants to make a complete circle
+	discQuadrant(img, x, y, radius, radius, color)  // Top-right quadrant
+	discQuadrant(img, x, y, -radius, radius, color)  // Top-left quadrant
+	discQuadrant(img, x, y, -radius, -radius, color)  // Bottom-left quadrant
+	discQuadrant(img, x, y, radius, -radius, color)  // Bottom-right quadrant
+}
+
+// Function to draw a simple filled rectangle
+func drawRect(img, x, y, w, h, color) {
+    image.move_to(img, x, y)
+    image.line_to(img, x + w, y)
+    image.line_to(img, x + w, y + h)
+    image.line_to(img, x, y + h)
+    image.close_path(img)
+    image.draw(img, color)
+}
+
+// triangle with base centered on x,y
+func drawTriangle(img, x, y, w, h, color) {
+    image.move_to(img, x-w/2.0, y+h)
+    image.line_to(img, x + w/2.0, y+h)
+    image.line_to(img, x, y)
+    image.close_path(img)
+    image.draw(img, color)
+}
 
 func sign(x) {
 	if x < 0 {-1} else {1}
@@ -438,11 +792,80 @@ func PlotBezierDemo() {
 	msgId = SendImage(i)
 }
 
+// --- Text in images --- from grol's examples/cards.gr
+
+// Helper function to return default if value is nil
+func or(val, default_val) {
+    if val == nil {
+        return default_val
+    }
+    return val
+}
+
+// Function to center multi-line text at specified coordinates
+func center_text(img, cx, cy, text, ..) {
+    opts := ..[0] // var args to get last optional argument, which is a map if provided
+    // Set defaults for optional parameters and override with any provided options
+    size := or(opts.size, 18.)  // Default size
+    color := or(opts.color, [0, 0, 0, 255])  // Default black
+    variant := or(opts.variant, "regular")  // Default font
+    spacing := or(opts.spacing, 1.)  // Default spacing
+    boundingBox := or(opts.boundingBox, false)  // Default bounding box
+
+    // Split text into lines using Grol's split function
+    lines := split(text, "\n")
+
+    // Calculate total height with spacing using "Xg" for better height measurement for multi-line text
+    // use the actual text to calculate height for single line text
+    hText := text
+    n := len(lines)
+    if n > 1 {
+        hText = "Xg"
+    }
+    lineInfo := image.text_size(hText, size, variant)
+    lineHeight := lineInfo.height
+    descent := lineInfo.descent
+    spacedLineHeight := lineHeight * spacing
+    totalHeight := spacedLineHeight * (n-1)
+
+    // Start position for first line
+    y := cy - totalHeight/2.0 + lineHeight/2.0 - descent
+
+    // Draw each line centered
+    for line := lines {
+        textSize := image.text_size(line, size, variant)
+        x := cx - textSize.width/2.0 - textSize.offset
+        image.text(img, x, y, size, line, color, variant)
+        y = y + spacedLineHeight
+    }
+    // Debug line height:
+    if boundingBox {
+        drawRect(img, cx-textSize.width/2., cy-spacedLineHeight/2., textSize.width, spacedLineHeight, [0,0,255,128])
+    }
+}
+
+func TextImageDemo() {
+	xsize:=256
+	ysize:=128
+
+	img := "canvas"
+	image.new(img, xsize, ysize)
+	center_text(img, xsize/2, ysize/2, "I'm grol!", {
+		"size": 48,
+		"color": [255, 210, 97, 255],
+		"variant": "italic",
+		"boundingBox": true,
+	})
+	msgId = SendImage(img)
+}
+
+// ---- text centering ---
+
 
 // ------- Misc stuff ----
 
 func layout(){
-	println("Simple project layout [github.com/go-standard/project-layout](<https://github.com/go-standard/project-layout#project-layout>) - simple is good!")
+	println("Simple project layout at [laurentsv.com's blog](https://laurentsv.com/blog/2024/10/19/no-nonsense-go-package-layout.html) - simple is good!")
 }
 
 
