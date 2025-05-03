@@ -74,6 +74,13 @@ discord = {
 		"update_message" : 7
 	},
   "doInteraction" : (msgId, userId, map) => { // tic-tac-toe example
+	clicked = map.custom_id
+	// Handle blackjack interactions
+	if clicked[0:3] == "bj_" {
+		blackjack.doInteraction(msgId, userId, map)
+		return
+	}
+	// Handle tictactoe interactions
 	state := discord_state[msgId]
 	if state == nil {
 		state = {
@@ -83,7 +90,6 @@ discord = {
 			"turn": 0
 		}
 	}
-	clicked = map.custom_id
 	if clicked == "reset" {
 		InteractionRespond({
 			"type": discord.interaction.update_message,
@@ -477,7 +483,6 @@ blackjack = {
 	"doInteraction": (msgId, userId, map) => {
 		// Only handle bj_ custom_ids
 		clicked = map.custom_id
-		if !startsWith(clicked, "bj_") { return }
 		state := discord_state[msgId]
 		if state == nil {
 			state = blackjack.initial_state
