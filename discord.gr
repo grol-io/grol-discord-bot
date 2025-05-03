@@ -460,7 +460,7 @@ cards := {
 
   bjs.newDecks()
 
-  func playBlackjack() {
+  func playBlackjackTextMode() {
 	printf("Play Blackjack!\n")
 	bjs.player_balance = 100 // reset balance if called again.
 	bjs.do_print = true
