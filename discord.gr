@@ -258,7 +258,7 @@ cards := {
 	"7": 7,
 	"8": 8,
 	"9": 9,
-	"10": 10,
+	"10": 10, // 0 has slash but O is too wide - maybe we need another TTF font
 	"J": 10,
 	"Q": 10,
 	"K": 10,
@@ -452,19 +452,20 @@ func drawBlackjackTable(player, dealer, hide) {
 			card(img, cardX, cardY, cardW, cardH, c[1], c[0])
 		}
 	}
-	msgId = SendImage(img)
+	//bfs.imageMessageId = SendImage(img)
+	return img
 }
 
 blackjack = {
 	"validStates": ["player_turn", "dealer_turn", "game_over"],
 	"state": {},
 	"send": state => {
-		drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
+		img :=drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
 		msg = {
 			"content": "Blackjack!",
 			"components": blackjack.stateToComponents(state)
 		}
-		ChannelMessageSendComplex(msg)
+		ChannelMessageSendComplex(msg, img)
 	},
 	"stateToComponents": state => {
 		buttons = []
@@ -517,14 +518,14 @@ blackjack = {
 			state.dealer = bjs.dealer_hand
 			state.message = bjs.evaluateGameDetails()
 		}
-		drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
+		img :=drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {
 				"content": state.message,
 				"components": blackjack.stateToComponents(state)
 			}
-		})
+		}, img)
 		discord_state[msgId] = state
 	}
 }
