@@ -77,8 +77,7 @@ discord = {
 	clicked = map.custom_id
 	// Handle blackjack interactions
 	if clicked[0:3] == "bj_" {
-		blackjack.doInteraction(msgId, userId, map)
-		return
+		return blackjack.doInteraction(msgId, userId, map)
 	}
 	// Handle tictactoe interactions
 	state := discord_state[msgId]
@@ -459,10 +458,10 @@ func drawBlackjackTable(player, dealer, hide) {
 blackjack = {
 	"validStates": ["player_turn", "dealer_turn", "game_over"],
 	"state": {},
-	"send": state => {
+	"start": state => {
 		img :=drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
 		msg = {
-			"content": "Blackjack!",
+			"content": "Blackjack!\n" + "Your hand is: " + str(bjs.player_hand_value),
 			"components": blackjack.stateToComponents(state)
 		}
 		ChannelMessageSendComplex(msg, img)
@@ -494,6 +493,7 @@ blackjack = {
 			bjs.newTurn()
 			state.player = bjs.player_hand
 			state.dealer = bjs.dealer_hand
+			state.message = "Your hand is: " + str(bjs.player_hand_value)
 		}
 		if clicked == "bj_new" {
 			state = blackjack.initial_state
@@ -510,15 +510,17 @@ blackjack = {
 				state.state = "dealer_turn"
 				bjs.completeDealerTurn()
 				state.dealer = bjs.dealer_hand
-				state.message = bjs.evaluateGameDetails()
+				bjs.evaluateGameDetails()
+				state.message = "After hitting, your hand is: " + str(bjs.player_hand_value)
 			}
 		} else if clicked == "bj_stand" && state.state == "player_turn" {
 			state.state = "dealer_turn"
 			bjs.completeDealerTurn()
 			state.dealer = bjs.dealer_hand
-			state.message = bjs.evaluateGameDetails()
+			bjs.evaluateGameDetails()
+			state.message = "Your hand is: " + str(bjs.player_hand_value) + " - dealer hand is: " + str(bjs.dealer_hand_value)
 		}
-		img :=drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
+		img := drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {
@@ -538,7 +540,7 @@ func Blackjack() {
 		"state": "player_turn",
 		"message": ""
 	}
-	blackjack.send(state)
+	blackjack.start(state)
 }
 
 

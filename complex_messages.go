@@ -235,7 +235,7 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			if !ok {
 				log.Fatalf("Invalid client data type: %T", cdata)
 			}
-			log.Infof("ChannelMessageSendComplex Message state %+v", msgContext)
+			log.LogVf("ChannelMessageSendComplex Message state %+v", msgContext)
 			chID := msgContext.ChannelID
 			dms := MsgMapToMessageSend(args[0].(object.Map))
 			if dms == nil {
@@ -252,7 +252,7 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 				log.Errf("Error adding image: %v", oerr)
 				return oerr
 			}
-			log.Infof("Sending message to channel %s: %v", chID, dms)
+			log.LogVf("Sending message to channel %s: %v", chID, dms)
 			// putting it back in discordgo.MessageSend{}
 			m, err := msgContext.Session.ChannelMessageSendComplex(chID, dms)
 			if err != nil {
