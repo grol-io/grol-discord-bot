@@ -498,7 +498,9 @@ blackjack = {
 	},
 	"stateToComponents": () => {
 		buttons = []
-		if bjs.end_game {
+		if bjs.player_balance < bjs.bet {
+			buttons = buttons + [discord.button("Out of money! (need $" + str(bjs.bet) + " min)",  discord.buttonStyle.danger, "bj_new")]
+		} else if bjs.end_game {
 			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
 		} else {
 			buttons = buttons + [
