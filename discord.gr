@@ -265,6 +265,10 @@ cards := {
 
 // Suits
 suits = ["♥", "♦", "♣", "♠"]
+hearts := suits[0]
+diamonds := suits[1]
+clubs := suits[2]
+spades := suits[3]
 
 // Generate a deck of cards
 func fullDeck() {
@@ -762,12 +766,6 @@ func cardBack(img, x, y, w, h) {
         }
     }
 }
-
-suits := ["♥", "♦", "♣", "♠"]
-hearts := suits[0]
-diamonds := suits[1]
-clubs := suits[2]
-spades := suits[3]
 
 func card(img, x, y, w, h, suit, face) {
     // Draw card background
