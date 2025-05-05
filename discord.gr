@@ -430,20 +430,22 @@ func drawBlackjackTable(player, dealer, hide) {
 	margin := 20.0
 	rows := 2
 	maxCards := max(len(player), len(dealer))
-	w := maxCards * (cardW + margin) + margin
-	h := rows * (cardH + margin) + margin
+	topBottomMargin := margin / 2.0
+	betweenRows := margin
+	w := maxCards * (cardW + margin) - margin
+	h := cardH * 2 + betweenRows + 2 * topBottomMargin
 	img = image.new("bjtable", round(w), round(h))
 	// Draw player cards (bottom row)
 	for i = 0:len(player) {
-		cardX := margin + i * (cardW + margin)
-		cardY := margin + cardH + margin // bottom row
+		cardX := i * (cardW + margin)
+		cardY := topBottomMargin + cardH + betweenRows // bottom row
 		c := player[i]
 		card(img, cardX, cardY, cardW, cardH, c[1], c[0])
 	}
 	// Draw dealer cards (top row)
 	for i = 0:len(dealer) {
-		cardX := margin + i * (cardW + margin)
-		cardY := margin // top row
+		cardX := i * (cardW + margin)
+		cardY := topBottomMargin // top row
 		c := dealer[i]
 		if hide && i == 0 {
 			cardBack(img, cardX, cardY, cardW, cardH)
