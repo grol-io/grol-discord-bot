@@ -289,7 +289,7 @@ func bj_summary() {
 	} else if bjs.lastchange == 1 {
 		extra = "💵 "
 	}
-	return sprintf("%s%s\t\tBalance: $%d\n",extra, bjs.summary, bjs.player_balance)
+	return sprintf("%s%s\t\tBalance: $%d",extra, bjs.summary, bjs.player_balance)
 }
 
 bjs := {
@@ -412,7 +412,11 @@ bjs := {
 			return 1
 		}
 		if bjs.player_hand_value < bjs.dealer_hand_value {
-			bjs.summary = "Dealer wins " + str(bjs.dealer_hand_value) + " to " + str(bjs.player_hand_value)
+			dlr := "Blackjack"
+			if !dbj {
+				dlr = str(bjs.dealer_hand_value)
+			}
+			bjs.summary = "Dealer wins " + dlr + " to " + str(bjs.player_hand_value)
 			return -1
 		}
 		bjs.summary = "Push " + str(bjs.player_hand_value) + " - " + str(bjs.dealer_hand_value)
@@ -479,72 +483,55 @@ func drawBlackjackTable(player, dealer, hide) {
 }
 
 blackjack = {
-	"state": {},
-	"start": state => {
+	"start": () => {
+		bjs.newTurn()
 		img :=drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
 		msg = {
 			"content": "Play Blackjack!\n" + bj_summary(),
-			"components": blackjack.stateToComponents(state)
+			"components": blackjack.stateToComponents()
 		}
 		ChannelMessageSendComplex(msg, img)
 	},
-	"stateToComponents": state => {
+	"stateToComponents": () => {
 		buttons = []
-		if state.state == "player_turn" {
+		if bjs.end_game {
+			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
+		} else {
 			buttons = buttons + [
 				discord.button("Hit", discord.buttonStyle.success, "bj_hit"),
 				discord.button("Stand", discord.buttonStyle.primary, "bj_stand")
 			]
-		} else {
-			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
 		}
 		[discord.actionRow(buttons)]
-	},
-	"initial_state": {
-		"state": "player_turn",
 	},
 	"doInteraction": (msgId, userId, map) => {
 		// Only handle bj_ custom_ids
 		clicked = map.custom_id
-		state := discord_state[msgId]
-		if state == nil {
-			state = blackjack.initial_state
-			bjs.newTurn()
-		}
+		tag := "<@" + userId + ">"
 		if clicked == "bj_new" {
-			state = blackjack.initial_state
 			bjs.newTurn()
 		} else if clicked == "bj_hit" {
 			bjs.hit()
-			if bjs.end_game {
-				state.state = "game_over"
-			}
 		} else if clicked == "bj_stand" {
-			state.state = "dealer_turn"
 			bjs.completeDealerTurn()
+		} else {
+			// must be new state
+			bjs.newTurn()
 		}
 		img := drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {
-				"content": bj_summary(),
-				"components": blackjack.stateToComponents(state)
+				"content": tag+" "+ bj_summary(),
+				"components": blackjack.stateToComponents()
 			}
 		}, img)
-		discord_state[msgId] = state
 	}
 }
 
 func Blackjack() {
 	bjs.player_balance = 100 // reset balance if called again.
-	bjs.newTurn()
-	state = {
-		"player": bjs.player_hand,
-		"dealer": bjs.dealer_hand,
-		"state": "player_turn",
-		"message": ""
-	}
-	blackjack.start(state)
+	blackjack.start()
 }
 
 

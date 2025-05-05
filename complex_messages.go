@@ -208,6 +208,9 @@ func MsgMapToInteractionResponse(msg object.Map) *discordgo.InteractionResponse 
 	}
 	ir.Content = dm.Content
 	ir.Components = dm.Components
+	ir.AllowedMentions = &discordgo.MessageAllowedMentions{
+		Parse: []discordgo.AllowedMentionType{},
+	}
 	return &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseUpdateMessage,
 		Data: &ir,
