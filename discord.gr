@@ -446,8 +446,8 @@ bjs.newDecks()
 
 // Draws the blackjack table: player cards in one row, dealer cards in another
 func drawBlackjackTable(player, dealer, hide) {
-	cardW := 180.0
-	cardH := 240.0
+	cardW := 90.0  // Half of 180.0
+	cardH := 120.0  // Half of 240.0
 	margin := 20.0
 	rows := 2
 	maxCards := max(len(player), len(dealer))
@@ -739,10 +739,10 @@ func cardBack(img, x, y, w, h) {
     y = y+offset
     w = w-2*offset
     h = h-2*offset
-    roundedRect(img, x-1, y-1, w+2, h+2, 10)
+    roundedRect(img, x-1, y-1, w+2, h+2, 7)
     image.draw(img, [0, 40, 160])
     // Diagonal lines:
-    step := 13
+    step := 7
     for i = 1:round(w/step)+round(h/step) {
         x1 := x + i*step
         y2 := y + i*step
