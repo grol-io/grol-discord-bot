@@ -180,7 +180,7 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 				ir.Data.Files = []*discordgo.File{dms.File}
 				// Explicitly set empty attachments to replace existing ones
 				ir.Data.Attachments = &[]*discordgo.MessageAttachment{}
-				log.Infof("Added file to interaction response: %s", dms.File.Name)
+				log.LogVf("Added file to interaction response: %s", dms.File.Name)
 			}
 			err := msgContext.Session.InteractionRespond(msgContext.Interaction, ir)
 			if err != nil {

@@ -479,7 +479,6 @@ func drawBlackjackTable(player, dealer, hide) {
 }
 
 blackjack = {
-	"validStates": ["player_turn", "dealer_turn", "game_over"],
 	"state": {},
 	"start": state => {
 		img :=drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
@@ -517,17 +516,12 @@ blackjack = {
 			bjs.newTurn()
 		} else if clicked == "bj_hit" {
 			bjs.hit()
-			if bjs.player_hand_value > 21 {
+			if bjs.end_game {
 				state.state = "game_over"
-			} else if bjs.player_hand_value == 21 {
-				state.state = "dealer_turn"
-				bjs.completeDealerTurn()
-				bjs.evaluateGameDetails()
 			}
 		} else if clicked == "bj_stand" {
 			state.state = "dealer_turn"
 			bjs.completeDealerTurn()
-			bjs.evaluateGameDetails()
 		}
 		img := drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
 		InteractionRespond({
