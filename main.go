@@ -17,7 +17,7 @@ var (
 	libraryCode string
 	depth       = flag.Int("max-depth", 2500, "Maximum depth of recursion")
 	// bjs is big (3900+ bytes).
-	maxLen = flag.Int("max-save-len", 4000, "Maximum len of saved identifiers, use 0 for unlimited")
+	maxLen = flag.Int("max-save-len", 4500, "Maximum len of saved identifiers, use 0 for unlimited")
 	maxDur = flag.Duration("max-duration", 3*time.Second, "Maximum duration of scripts, use 0 for unlimited")
 	panicF = flag.Bool("panic", false, "Don't catch panic (DEV only)")
 )

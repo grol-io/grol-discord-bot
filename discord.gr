@@ -279,12 +279,17 @@ func fullDeck() {
 
 // Returns a string that indicates the current state of the game, player and dealer hands, and player balance
 func bj_summary() {
-	// Only show dealer hand score if player turn is over - it's kept at 0 until then
-	if bjs.dealer_hand_value > 0 {
-		return sprintf("Player hand: %d pts, dealer %d\t\tbalance: $%d\n", bjs.player_hand_value, bjs.dealer_hand_value, bjs.player_balance)
-	} else {
-		return sprintf("Player hand: %d pts\t\tbalance: $%d\n", bjs.player_hand_value, bjs.player_balance)
+	extra := ""
+	if bjs.lastchange== 1.5 {
+		extra = "💵💰 "
+	} else if bjs.lastchange == -1 {
+		extra = "💀 "
+	} else if bjs.lastchange == 0 {
+		extra = "🤝 "
+	} else if bjs.lastchange == 1 {
+		extra = "💵 "
 	}
+	return sprintf("%s%s\t\tBalance: $%d\n",extra, bjs.summary, bjs.player_balance)
 }
 
 bjs := {
@@ -299,6 +304,7 @@ bjs := {
 	"player_balance" : 100,
 	"bet" : 10,
 	"end_game" : true,
+	"summary" : "",
 	// Methods
 	"printf": (..) => {
 		if bjs.do_print {
@@ -325,9 +331,11 @@ bjs := {
 		bjs.dealer_hand_value = 0 // don't leak it through logs/don't calculate it yet
 		bjs.player_hand = bjs.dealCard()
 		bjs.player_hand = bjs.player_hand + bjs.dealCard()
+		bjs.lastchange = -9 // reset lastchange to no display
 		bjs.end_game = false
 		bjs.printf("\nNew turn, dealer hand: [[X] %v]\n", (bjs.dealer_hand)[1:])
 		bjs.player_hand_value = bjs.handValue(bjs.player_hand)
+		bjs.summary = "New turn. Player hand " + str(bjs.player_hand_value) + " pts"
 		bjs.printf("Player hand: %v - pts %d\n", bjs.player_hand, bjs.player_hand_value)
 		bjs.earlyPlayerStop()
 	},
@@ -343,6 +351,7 @@ bjs := {
 	"hit": () => {
 		bjs.player_hand = bjs.player_hand + bjs.dealCard()
 		bjs.player_hand_value = bjs.handValue(bjs.player_hand)
+		bjs.summary = "Player hit, hand is now " + str(bjs.player_hand_value) + " pts"
 		bjs.printf("Player new hand: %v - pts %d\n", bjs.player_hand, bjs.player_hand_value)
 		bjs.earlyPlayerStop()
 	},
@@ -373,8 +382,9 @@ bjs := {
 		bjs.evaluateGame()
 	},
 	"evaluateGame": () => {
-		bjs.player_balance = round(bjs.player_balance + bjs.evaluateGameDetails()*bjs.bet)
-		bjs.printf("New player balance: $%d\n", bjs.player_balance)
+		bjs.lastchange = bjs.evaluateGameDetails()
+		bjs.player_balance = round(bjs.player_balance + bjs.lastchange*bjs.bet)
+		bjs.printf("%s\nNew player balance: $%d\n", bjs.summary, bjs.player_balance)
 		bjs.end_game = true
 	},
 	"evaluateGameDetails": () => {
@@ -382,29 +392,30 @@ bjs := {
 		dbj := bjs.isBlackjack(bjs.dealer_hand)
 		if pbj {
 			if dbj {
-				bjs.printf("Both blackjack, Push\n")
+				bjs.summary = "Both blackjack, Push"
 				return 0
 			} else {
-				bjs.printf("Player wins Blackjack to %d\n", bjs.dealer_hand_value)
+				bjs.summary = "Player wins Blackjack to " + str(bjs.dealer_hand_value)
 				return 1.5
 			}
 		}
 		if bjs.player_hand_value > 21 {
+			bjs.summary = "Player busts (" + str(bjs.player_hand_value) + ") !"
 			return -1
 		}
 		if bjs.dealer_hand_value > 21 {
-			bjs.printf("Dealer busts %d\n", bjs.dealer_hand_value)
+			bjs.summary = "Dealer busts " + str(bjs.dealer_hand_value) + " (Player " + str(bjs.player_hand_value) + ")"
 			return 1
 		}
 		if bjs.player_hand_value > bjs.dealer_hand_value {
-			bjs.printf("Player wins %d to %d\n", bjs.player_hand_value, bjs.dealer_hand_value)
+			bjs.summary = "Player wins " + str(bjs.player_hand_value) + " to " + str(bjs.dealer_hand_value)
 			return 1
 		}
 		if bjs.player_hand_value < bjs.dealer_hand_value {
-			bjs.printf("Dealer wins %d to %d\n", bjs.dealer_hand_value, bjs.player_hand_value)
+			bjs.summary = "Dealer wins " + str(bjs.dealer_hand_value) + " to " + str(bjs.player_hand_value)
 			return -1
 		}
-		bjs.printf("Push %d - %d\n", bjs.player_hand_value, bjs.dealer_hand_value)
+		bjs.summary = "Push " + str(bjs.player_hand_value) + " - " + str(bjs.dealer_hand_value)
 		return 0
 	},
 	"isBlackjack": (hand) => {
@@ -471,9 +482,9 @@ blackjack = {
 	"validStates": ["player_turn", "dealer_turn", "game_over"],
 	"state": {},
 	"start": state => {
-		img :=drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
+		img :=drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
 		msg = {
-			"content": "Blackjack!\n" + bj_summary(),
+			"content": "Play Blackjack!\n" + bj_summary(),
 			"components": blackjack.stateToComponents(state)
 		}
 		ChannelMessageSendComplex(msg, img)
@@ -491,10 +502,7 @@ blackjack = {
 		[discord.actionRow(buttons)]
 	},
 	"initial_state": {
-		"player": [],
-		"dealer": [],
 		"state": "player_turn",
-		"message": ""
 	},
 	"doInteraction": (msgId, userId, map) => {
 		// Only handle bj_ custom_ids
@@ -503,40 +511,29 @@ blackjack = {
 		if state == nil {
 			state = blackjack.initial_state
 			bjs.newTurn()
-			state.player = bjs.player_hand
-			state.dealer = bjs.dealer_hand
-			state.message = "Your hand is: " + str(bjs.player_hand_value)
 		}
 		if clicked == "bj_new" {
 			state = blackjack.initial_state
 			bjs.newTurn()
-			state.player = bjs.player_hand
-			state.dealer = bjs.dealer_hand
-		} else if clicked == "bj_hit" && state.state == "player_turn" {
+		} else if clicked == "bj_hit" {
 			bjs.hit()
-			state.player = bjs.player_hand
 			if bjs.player_hand_value > 21 {
 				state.state = "game_over"
-				state.message = "Bust! You lose."
 			} else if bjs.player_hand_value == 21 {
 				state.state = "dealer_turn"
 				bjs.completeDealerTurn()
-				state.dealer = bjs.dealer_hand
 				bjs.evaluateGameDetails()
-				state.message = "After hitting, your hand is: " + str(bjs.player_hand_value)
 			}
-		} else if clicked == "bj_stand" && state.state == "player_turn" {
+		} else if clicked == "bj_stand" {
 			state.state = "dealer_turn"
 			bjs.completeDealerTurn()
-			state.dealer = bjs.dealer_hand
 			bjs.evaluateGameDetails()
-			state.message = "Your hand is: " + str(bjs.player_hand_value) + " - dealer hand is: " + str(bjs.dealer_hand_value)
 		}
-		img := drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
+		img := drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {
-				"content": state.message + "\n" + bj_summary(),
+				"content": bj_summary(),
 				"components": blackjack.stateToComponents(state)
 			}
 		}, img)
@@ -545,6 +542,7 @@ blackjack = {
 }
 
 func Blackjack() {
+	bjs.player_balance = 100 // reset balance if called again.
 	bjs.newTurn()
 	state = {
 		"player": bjs.player_hand,
