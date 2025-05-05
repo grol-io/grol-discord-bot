@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"image/png"
 
 	"fortio.org/log"
 	"github.com/bwmarrin/discordgo"
@@ -108,6 +109,7 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		st := MessageState{
 			Session:     s,
 			Interaction: i.Interaction,
+			ImageMap:    state.Extensions["image.new"].ClientData.(extensions.ImageMap),
 		}
 		name, fn := InteractionRespondFunction(&st)
 		state.Extensions[name] = fn
@@ -134,12 +136,28 @@ type MessageState struct {
 	ImageMap    extensions.ImageMap
 }
 
+func AddImage(st *MessageState, msg *discordgo.MessageSend, args []object.Object) object.Object {
+	if len(args) <= 1 {
+		return object.NULL
+	}
+	imgName := args[1].(object.String).Value
+	img, ok := st.ImageMap[args[1]]
+	if !ok {
+		return object.Errorf("image not found: %q", imgName)
+	}
+	buf := bytes.Buffer{}
+	_ = png.Encode(&buf, img.Image)
+	msg.File = &discordgo.File{Name: imgName + ".png", Reader: &buf}
+	return object.NULL
+}
+
 func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 	cmd := object.Extension{
 		Name:       "InteractionRespond",
 		MinArgs:    1,
-		MaxArgs:    1,
-		ArgTypes:   []object.Type{object.MAP},
+		MaxArgs:    2,
+		Help:       "Respond and optionally attach an image",
+		ArgTypes:   []object.Type{object.MAP, object.STRING},
 		ClientData: st, // Unique to the current interpreter
 		Callback: func(cdata any, _ string, args []object.Object) object.Object {
 			msgContext, ok := cdata.(*MessageState)
@@ -147,12 +165,24 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 				log.Fatalf("Invalid client data type: %T", cdata)
 			}
 			log.Debugf("InteractionRespond Message state %+v", msgContext)
-			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
-			msg["data"].(map[string]any)["allowed_mentions"] = discordgo.MessageAllowedMentions{
-				Parse: []discordgo.AllowedMentionType{},
+			ir := MsgMapToInteractionResponse(args[0].(object.Map))
+			if ir == nil {
+				// already logged
+				return object.Errorf("Error converting map to struct")
 			}
-			endpoint := discordgo.EndpointInteractionResponse(msgContext.Interaction.ID, msgContext.Interaction.Token)
-			_, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
+			dms := discordgo.MessageSend{}
+			oerr := AddImage(msgContext, &dms, args)
+			if oerr != object.NULL {
+				log.Errf("Error adding image: %v", oerr)
+				return oerr
+			}
+			if dms.File != nil {
+				ir.Data.Files = []*discordgo.File{dms.File}
+				// Explicitly set empty attachments to replace existing ones
+				ir.Data.Attachments = &[]*discordgo.MessageAttachment{}
+				log.LogVf("Added file to interaction response: %s", dms.File.Name)
+			}
+			err := msgContext.Session.InteractionRespond(msgContext.Interaction, ir)
 			if err != nil {
 				log.Errf("Error sending interaction response: %v", err)
 				return object.Errorf("Error sending interaction response: %v", err)
@@ -163,40 +193,78 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 	return cmd.Name, cmd
 }
 
+func MsgMapToInteractionResponse(msg object.Map) *discordgo.InteractionResponse {
+	dm := discordgo.Message{}
+	ir := discordgo.InteractionResponseData{}
+	dataPart, found := msg.Get(object.String{Value: "data"})
+	if !found {
+		log.Errf("No \"data\" part found in map")
+		return nil
+	}
+	err := extensions.MapToStruct(dataPart.(object.Map), &dm) // MessageSend is lacking the UnmarshalJSON
+	if err != nil {
+		log.Errf("Error converting map to struct: %v", err)
+		return nil
+	}
+	ir.Content = dm.Content
+	ir.Components = dm.Components
+	ir.AllowedMentions = &discordgo.MessageAllowedMentions{
+		Parse: []discordgo.AllowedMentionType{},
+	}
+	return &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseUpdateMessage,
+		Data: &ir,
+	}
+}
+
+func MsgMapToMessageSend(msg object.Map) *discordgo.MessageSend {
+	dm := discordgo.Message{}
+	dms := discordgo.MessageSend{}
+	err := extensions.MapToStruct(msg, &dm) // MessageSend is lacking the UnmarshalJSON
+	if err != nil {
+		log.Errf("Error converting map to struct: %v", err)
+		return nil
+	}
+	dms.Content = dm.Content
+	dms.Components = dm.Components
+	return &dms
+}
+
 func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extension) {
 	cmd := object.Extension{
 		Name:       "ChannelMessageSendComplex",
 		MinArgs:    1,
-		MaxArgs:    1,
-		ArgTypes:   []object.Type{object.MAP},
+		MaxArgs:    2,
+		ArgTypes:   []object.Type{object.MAP, object.STRING},
 		ClientData: st, // Unique to the current interpreter
 		Callback: func(cdata any, _ string, args []object.Object) object.Object {
 			msgContext, ok := cdata.(*MessageState)
 			if !ok {
 				log.Fatalf("Invalid client data type: %T", cdata)
 			}
-			log.Debugf("ChannelMessageSendComplex Message state %+v", msgContext)
+			log.LogVf("ChannelMessageSendComplex Message state %+v", msgContext)
 			chID := msgContext.ChannelID
-			msg := args[0].(object.Map).Unwrap(true).(map[string]any)
+			dms := MsgMapToMessageSend(args[0].(object.Map))
+			if dms == nil {
+				// already logged
+				return object.Errorf("Error converting map to struct")
+			}
 			// Make this a reply to identify the origin source (person) of the message.
-			ref := make(map[string]string, 1)
-			ref["message_id"] = msgContext.TriggerMessageID
-			msg["message_reference"] = ref
-			msg["allowed_mentions"] = discordgo.MessageAllowedMentions{
+			dms.Reference = &discordgo.MessageReference{MessageID: msgContext.TriggerMessageID}
+			dms.AllowedMentions = &discordgo.MessageAllowedMentions{
 				Parse: []discordgo.AllowedMentionType{},
 			}
-			log.Debugf("Sending message to channel %s: %v", chID, msg)
-			endpoint := discordgo.EndpointChannelMessages(chID)
-			response, err := msgContext.Session.RequestWithBucketID(http.MethodPost, endpoint, msg, endpoint)
+			oerr := AddImage(msgContext, dms, args)
+			if oerr != object.NULL {
+				log.Errf("Error adding image: %v", oerr)
+				return oerr
+			}
+			log.LogVf("Sending message to channel %s: %v", chID, dms)
+			// putting it back in discordgo.MessageSend{}
+			m, err := msgContext.Session.ChannelMessageSendComplex(chID, dms)
 			if err != nil {
 				log.Errf("Error sending message: %v", err)
 				return object.Errorf("Error sending message: %v", err)
-			}
-			var m discordgo.Message
-			err = json.Unmarshal(response, &m)
-			if err != nil {
-				log.Errf("Error unmarshalling message: %v", err)
-				return object.Errorf("Error unmarshalling message: %v", err)
 			}
 			updateMap(msgContext.TriggerMessageID, m.ID)
 			return object.String{Value: m.ID}

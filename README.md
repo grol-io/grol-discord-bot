@@ -3,6 +3,10 @@ Discord bot offering grol
 
 ![screenshot](screenshot.png)
 
+Also now plays Blackjack:
+
+![blackjack](blackjack.png)
+
 ## Invite link
 Invite link (add grol bot to your server):
 
