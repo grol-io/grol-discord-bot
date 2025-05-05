@@ -109,6 +109,7 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		st := MessageState{
 			Session:     s,
 			Interaction: i.Interaction,
+			ImageMap:    state.Extensions["image.new"].ClientData.(extensions.ImageMap),
 		}
 		name, fn := InteractionRespondFunction(&st)
 		state.Extensions[name] = fn
@@ -177,6 +178,9 @@ func InteractionRespondFunction(st *MessageState) (string, object.Extension) {
 			}
 			if dms.File != nil {
 				ir.Data.Files = []*discordgo.File{dms.File}
+				// Explicitly set empty attachments to replace existing ones
+				ir.Data.Attachments = &[]*discordgo.MessageAttachment{}
+				log.Infof("Added file to interaction response: %s", dms.File.Name)
 			}
 			err := msgContext.Session.InteractionRespond(msgContext.Interaction, ir)
 			if err != nil {
