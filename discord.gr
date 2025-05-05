@@ -277,6 +277,16 @@ func fullDeck() {
 	return deck
 }
 
+// Returns a string that indicates the current state of the game, player and dealer hands, and player balance
+func bj_summary() {
+	// Only show dealer hand score if player turn is over - it's kept at 0 until then
+	if bjs.dealer_hand_value > 0 {
+		return sprintf("Player hand: %d pts, dealer %d\t\tbalance: $%d\n", bjs.player_hand_value, bjs.dealer_hand_value, bjs.player_balance)
+	} else {
+		return sprintf("Player hand: %d pts\t\tbalance: $%d\n", bjs.player_hand_value, bjs.player_balance)
+	}
+}
+
 bjs := {
 	"do_print": true,
 	"num_decks" : 1,
@@ -463,7 +473,7 @@ blackjack = {
 	"start": state => {
 		img :=drawBlackjackTable(state.player, state.dealer, state.state != "dealer_turn")
 		msg = {
-			"content": "Blackjack!\n" + "Your hand is: " + str(bjs.player_hand_value),
+			"content": "Blackjack!\n" + bj_summary(),
 			"components": blackjack.stateToComponents(state)
 		}
 		ChannelMessageSendComplex(msg, img)
@@ -526,7 +536,7 @@ blackjack = {
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {
-				"content": state.message,
+				"content": state.message + "\n" + bj_summary(),
 				"components": blackjack.stateToComponents(state)
 			}
 		}, img)
