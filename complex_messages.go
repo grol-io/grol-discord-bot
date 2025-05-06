@@ -242,6 +242,9 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			if !ok {
 				log.Fatalf("Invalid client data type: %T", cdata)
 			}
+			if _, found := msgSet.Get(msgContext.TriggerMessageID); found {
+				return object.Errorf("Message already sent")
+			}
 			log.LogVf("ChannelMessageSendComplex Message state %+v", msgContext)
 			chID := msgContext.ChannelID
 			dms := MsgMapToMessageSend(args[0].(object.Map))

@@ -143,7 +143,6 @@ discord_state = {}
 
 // ---- tic tac toe ----
 
-
 tictactoe = {
   "empty_board": [["","",""],["","",""],["","",""]],
   "boardToComponents": (board, hi, hj) => {
@@ -463,7 +462,7 @@ func drawBlackjackTable(player, dealer, hide) {
 	betweenRows := margin
 	w := maxCards * (cardW + margin) - margin
 	h := cardH * 2 + betweenRows + 2 * topBottomMargin
-	img = image.new("bjtable", round(w), round(h))
+	img := image.new("bjtable", round(w), round(h))
 	// Draw player cards (bottom row)
 	for i = 0:len(player) {
 		cardX := i * (cardW + margin)
@@ -503,9 +502,10 @@ blackjack = {
 		} else if bjs.end_game {
 			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
 		} else {
+			nbsp := " " // U+A0
 			buttons = buttons + [
-				discord.button("Hit", discord.buttonStyle.success, "bj_hit"),
-				discord.button("Stand", discord.buttonStyle.primary, "bj_stand")
+				discord.button( "➕ Hit ➕", discord.buttonStyle.primary, "bj_hit"),
+				discord.button("✋ Stand", discord.buttonStyle.success, "bj_stand")
 			]
 		}
 		[discord.actionRow(buttons)]
