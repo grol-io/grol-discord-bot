@@ -300,6 +300,15 @@ bjs = {
 			"highest_balance": 100
 		}
 	},
+	"dealCard": (state) => {
+		card := state.decks[0]
+		state.decks = state.decks[1:]
+		t := state.new_decks_at*52.*state.num_decks/100.
+		if len(state.decks) <= t {
+			state.decks = shuffle(fullDeck()*state.num_decks)
+		}
+		return [card]
+	},
 	"newTurn": (state) => {
 		state.dealer_hand = bjs.dealCard(state)
 		state.dealer_hand = state.dealer_hand + bjs.dealCard(state)
@@ -311,15 +320,6 @@ bjs = {
 		state.player_hand_value = bjs.handValue(state.player_hand)
 		state.summary = "New turn (" + str(state.rounds_played) + "). Player hand " + str(state.player_hand_value) + " pts"
 		bjs.earlyPlayerStop(state)
-	},
-	"dealCard": (state) => {
-		card := state.decks[0]
-		state.decks = state.decks[1:]
-		t := state.new_decks_at*52.*state.num_decks/100.
-		if len(state.decks) <= t {
-			state.decks = shuffle(fullDeck()*state.num_decks)
-		}
-		return [card]
 	},
 	"earlyPlayerStop": (state) => {
 		if state.player_hand_value > 21 {
@@ -420,6 +420,39 @@ bjs = {
 	}
 }
 
+// Draws the blackjack table: player cards in one row, dealer cards in another
+func drawBlackjackTable(player, dealer, hide) {
+	cardW := 90.0  // Half of 180.0
+	cardH := 120.0  // Half of 240.0
+	margin := 20.0
+	rows := 2
+	maxCards := max(len(player), len(dealer))
+	topBottomMargin := margin / 2.0
+	betweenRows := margin
+	w := maxCards * (cardW + margin) - margin
+	h := cardH * 2 + betweenRows + 2 * topBottomMargin
+	img := image.new("bjtable", round(w), round(h))
+	// Draw player cards (bottom row)
+	for i = 0:len(player) {
+		cardX := i * (cardW + margin)
+		cardY := topBottomMargin + cardH + betweenRows // bottom row
+		c := player[i]
+		card(img, cardX, cardY, cardW, cardH, c[1], c[0])
+	}
+	// Draw dealer cards (top row)
+	for i = 0:len(dealer) {
+		cardX := i * (cardW + margin)
+		cardY := topBottomMargin // top row
+		c := dealer[i]
+		if hide && i == 0 {
+			cardBack(img, cardX, cardY, cardW, cardH)
+		} else {
+			card(img, cardX, cardY, cardW, cardH, c[1], c[0])
+		}
+	}
+	return img
+}
+
 blackjack = {
 	"start": () => {
 		state := bjs.initialState()
@@ -495,39 +528,6 @@ blackjack = {
 		}
 		return sprintf("%s%s\t\tBalance: $%d (High: $%d)", extra, state.summary, state.player_balance, state.highest_balance)
 	}
-}
-
-// Draws the blackjack table: player cards in one row, dealer cards in another
-func drawBlackjackTable(player, dealer, hide) {
-	cardW := 90.0  // Half of 180.0
-	cardH := 120.0  // Half of 240.0
-	margin := 20.0
-	rows := 2
-	maxCards := max(len(player), len(dealer))
-	topBottomMargin := margin / 2.0
-	betweenRows := margin
-	w := maxCards * (cardW + margin) - margin
-	h := cardH * 2 + betweenRows + 2 * topBottomMargin
-	img := image.new("bjtable", round(w), round(h))
-	// Draw player cards (bottom row)
-	for i = 0:len(player) {
-		cardX := i * (cardW + margin)
-		cardY := topBottomMargin + cardH + betweenRows // bottom row
-		c := player[i]
-		card(img, cardX, cardY, cardW, cardH, c[1], c[0])
-	}
-	// Draw dealer cards (top row)
-	for i = 0:len(dealer) {
-		cardX := i * (cardW + margin)
-		cardY := topBottomMargin // top row
-		c := dealer[i]
-		if hide && i == 0 {
-			cardBack(img, cardX, cardY, cardW, cardH)
-		} else {
-			card(img, cardX, cardY, cardW, cardH, c[1], c[0])
-		}
-	}
-	return img
 }
 
 func Blackjack() {
