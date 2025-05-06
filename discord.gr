@@ -280,149 +280,119 @@ func fullDeck() {
 	return deck
 }
 
-// Returns a string that indicates the current state of the game, player and dealer hands, and player balance
-func bj_summary() {
-	extra := ""
-	if bjs.lastchange== 1.5 {
-		extra = "💵💰 "
-	} else if bjs.lastchange == -1 {
-		extra = "💀 "
-	} else if bjs.lastchange == 0 {
-		extra = "🤝 "
-	} else if bjs.lastchange == 1 {
-		extra = "💵 "
-	}
-	return sprintf("%s%s\t\tBalance: $%d",extra, bjs.summary, bjs.player_balance)
-}
-
-bjs := {
-	"do_print": true,
-	"num_decks" : 1,
-	"new_decks_at" : 0, // so folks can count cards easier
-	"decks" : [],
-	"player_hand" : [],
-	"dealer_hand" : [],
-	"player_hand_value" : 0,
-	"dealer_hand_value" : 0,
-	"player_balance" : 100,
-	"bet" : 10,
-	"end_game" : true,
-	"summary" : "",
-	// Methods
-	"printf": (..) => {
-		if bjs.do_print {
-			printf(..)
+bjs = {
+	"initialState": () => {
+		{
+			"num_decks": 1,
+			"new_decks_at": 0, // so folks can count cards easier
+			"decks": [],
+			"player_hand": [],
+			"dealer_hand": [],
+			"player_hand_value": 0,
+			"dealer_hand_value": 0,
+			"player_balance": 100,
+			"bet": 10,
+			"end_game": true,
+			"summary": "",
+			"lastchange": 0,
+			"rounds_played": 1,
+			"highest_balance": 100
 		}
 	},
-	"newDecks": () => {
-		remaining := len(bjs.decks)
-		bjs.decks = shuffle(fullDeck()*bjs.num_decks)
-		bjs.printf("New decks: %d cards shuffled, %d cards left before\n", len(bjs.decks), remaining)
-	},
-	"dealCard": () => {
-		card := bjs.decks[0]
-		bjs.decks = bjs.decks[1:]
-		t:= bjs.new_decks_at*52.*bjs.num_decks/100.
-		if len(bjs.decks) <= t {
-			bjs.newDecks()
+	"dealCard": (state) => {
+		card := state.decks[0]
+		state.decks = state.decks[1:]
+		t := state.new_decks_at*52.*state.num_decks/100.
+		if len(state.decks) <= t {
+			state.decks = shuffle(fullDeck()*state.num_decks)
 		}
 		return [card]
 	},
-	"newTurn": () => {
-		bjs.dealer_hand = bjs.dealCard()
-		bjs.dealer_hand = bjs.dealer_hand + bjs.dealCard()
-		bjs.dealer_hand_value = 0 // don't leak it through logs/don't calculate it yet
-		bjs.player_hand = bjs.dealCard()
-		bjs.player_hand = bjs.player_hand + bjs.dealCard()
-		bjs.lastchange = -9 // reset lastchange to no display
-		bjs.end_game = false
-		bjs.printf("\nNew turn, dealer hand: [[X] %v]\n", (bjs.dealer_hand)[1:])
-		bjs.player_hand_value = bjs.handValue(bjs.player_hand)
-		bjs.summary = "New turn. Player hand " + str(bjs.player_hand_value) + " pts"
-		bjs.printf("Player hand: %v - pts %d\n", bjs.player_hand, bjs.player_hand_value)
-		bjs.earlyPlayerStop()
+	"newTurn": (state) => {
+		state.dealer_hand = bjs.dealCard(state)
+		state.dealer_hand = state.dealer_hand + bjs.dealCard(state)
+		state.dealer_hand_value = 0
+		state.player_hand = bjs.dealCard(state)
+		state.player_hand = state.player_hand + bjs.dealCard(state)
+		state.lastchange = -9
+		state.end_game = false
+		state.player_hand_value = bjs.handValue(state.player_hand)
+		state.summary = "Turn #" + str(state.rounds_played) + ". Player hand " + str(state.player_hand_value) + " pts"
+		bjs.earlyPlayerStop(state)
 	},
-	"earlyPlayerStop": () => {
-		if bjs.player_hand_value > 21 {
-			bjs.printf("Player busts\n")
-			bjs.completeDealerTurn()
-		} else if bjs.player_hand_value == 21 {
-			bjs.printf("Player 21 (likely win)\n")
-			bjs.completeDealerTurn()
+	"earlyPlayerStop": (state) => {
+		if state.player_hand_value > 21 {
+			bjs.completeDealerTurn(state)
+		} else if state.player_hand_value == 21 {
+			bjs.completeDealerTurn(state)
 		}
 	},
-	"hit": () => {
-		bjs.player_hand = bjs.player_hand + bjs.dealCard()
-		bjs.player_hand_value = bjs.handValue(bjs.player_hand)
-		bjs.summary = "Player hit, hand is now " + str(bjs.player_hand_value) + " pts"
-		bjs.printf("Player new hand: %v - pts %d\n", bjs.player_hand, bjs.player_hand_value)
-		bjs.earlyPlayerStop()
+	"hit": (state) => {
+		state.player_hand = state.player_hand + bjs.dealCard(state)
+		state.player_hand_value = bjs.handValue(state.player_hand)
+		state.summary = "Player hit, hand is now " + str(state.player_hand_value) + " pts"
+		bjs.earlyPlayerStop(state)
 	},
-	"dealerHit": () => {
-		prevValue := bjs.dealer_hand_value
-		bjs.dealer_hand = bjs.dealer_hand + bjs.dealCard()
-		bjs.dealer_hand_value = bjs.handValue(bjs.dealer_hand)
-		bjs.printf("Dealer hit (%d)! new hand: %v - pts %d\n", prevValue, bjs.dealer_hand, bjs.dealer_hand_value)
+	"dealerHit": (state) => {
+		state.dealer_hand = state.dealer_hand + bjs.dealCard(state)
+		state.dealer_hand_value = bjs.handValue(state.dealer_hand)
 	},
-	// like player strategy, true for hit, false for stand
-	"dealerStrategy": () => {
-		if bjs.dealer_hand_value == 0 { // don't recalc it just got calculated in dealerHit except first time
-			bjs.dealer_hand_value = bjs.handValue(bjs.dealer_hand)
+	"dealerStrategy": (state) => {
+		if state.dealer_hand_value == 0 {
+			state.dealer_hand_value = bjs.handValue(state.dealer_hand)
 		}
 		// hit until 17 or higher
-		return bjs.dealer_hand_value <= 16
+		return state.dealer_hand_value <= 16
 	},
-	"completeDealerTurn": () => {
-		bjs.dealer_hand_value = bjs.handValue(bjs.dealer_hand)
-		for bjs.dealerStrategy() {
-			bjs.dealerHit()
+	"completeDealerTurn": (state) => {
+		state.dealer_hand_value = bjs.handValue(state.dealer_hand)
+		for bjs.dealerStrategy(state) {
+			bjs.dealerHit(state)
 		}
-		if bjs.dealer_hand_value > 21 {
-			bjs.printf("Dealer bust %v: %d\n", bjs.dealer_hand, bjs.dealer_hand_value)
-		} else {
-			bjs.printf("Dealer stands %v: %d\n", bjs.dealer_hand, bjs.dealer_hand_value)
+		bjs.evaluateGame(state)
+	},
+	"evaluateGame": (state) => {
+		state.lastchange = bjs.evaluateGameDetails(state)
+		state.player_balance = round(state.player_balance + state.lastchange*state.bet)
+		if state.player_balance > state.highest_balance {
+			state.highest_balance = state.player_balance
 		}
-		bjs.evaluateGame()
+		state.rounds_played = state.rounds_played + 1
+		state.end_game = true
 	},
-	"evaluateGame": () => {
-		bjs.lastchange = bjs.evaluateGameDetails()
-		bjs.player_balance = round(bjs.player_balance + bjs.lastchange*bjs.bet)
-		bjs.printf("%s\nNew player balance: $%d\n", bjs.summary, bjs.player_balance)
-		bjs.end_game = true
-	},
-	"evaluateGameDetails": () => {
-		pbj := bjs.isBlackjack(bjs.player_hand)
-		dbj := bjs.isBlackjack(bjs.dealer_hand)
+	"evaluateGameDetails": (state) => {
+		pbj := bjs.isBlackjack(state.player_hand)
+		dbj := bjs.isBlackjack(state.dealer_hand)
 		if pbj {
 			if dbj {
-				bjs.summary = "Both blackjack, Push"
+				state.summary = "Both blackjack, Push"
 				return 0
 			} else {
-				bjs.summary = "Player wins Blackjack to " + str(bjs.dealer_hand_value)
+				state.summary = "Player wins Blackjack to " + str(state.dealer_hand_value)
 				return 1.5
 			}
 		}
-		if bjs.player_hand_value > 21 {
-			bjs.summary = "Player busts (" + str(bjs.player_hand_value) + ") !"
+		if state.player_hand_value > 21 {
+			state.summary = "Player busts (" + str(state.player_hand_value) + ") !"
 			return -1
 		}
-		if bjs.dealer_hand_value > 21 {
-			bjs.summary = "Dealer busts " + str(bjs.dealer_hand_value) + " (Player " + str(bjs.player_hand_value) + ")"
+		if state.dealer_hand_value > 21 {
+			state.summary = "Dealer busts " + str(state.dealer_hand_value) + " (Player " + str(state.player_hand_value) + ")"
 			return 1
 		}
-		if bjs.player_hand_value > bjs.dealer_hand_value {
-			bjs.summary = "Player wins " + str(bjs.player_hand_value) + " to " + str(bjs.dealer_hand_value)
+		if state.player_hand_value > state.dealer_hand_value {
+			state.summary = "Player wins " + str(state.player_hand_value) + " to " + str(state.dealer_hand_value)
 			return 1
 		}
-		if bjs.player_hand_value < bjs.dealer_hand_value {
+		if state.player_hand_value < state.dealer_hand_value {
 			dlr := "Blackjack"
 			if !dbj {
-				dlr = str(bjs.dealer_hand_value)
+				dlr = str(state.dealer_hand_value)
 			}
-			bjs.summary = "Dealer wins " + dlr + " to " + str(bjs.player_hand_value)
+			state.summary = "Dealer wins " + dlr + " to " + str(state.player_hand_value)
 			return -1
 		}
-		bjs.summary = "Push " + str(bjs.player_hand_value) + " - " + str(bjs.dealer_hand_value)
+		state.summary = "Push " + str(state.player_hand_value) + " - " + str(state.dealer_hand_value)
 		return 0
 	},
 	"isBlackjack": (hand) => {
@@ -449,12 +419,10 @@ bjs := {
 	}
 }
 
-bjs.newDecks()
-
 // Draws the blackjack table: player cards in one row, dealer cards in another
 func drawBlackjackTable(player, dealer, hide) {
-	cardW := 90.0  // Half of 180.0
-	cardH := 120.0  // Half of 240.0
+	cardW := 90.0
+	cardH := 120.0
 	margin := 20.0
 	rows := 2
 	maxCards := max(len(player), len(dealer))
@@ -481,95 +449,88 @@ func drawBlackjackTable(player, dealer, hide) {
 			card(img, cardX, cardY, cardW, cardH, c[1], c[0])
 		}
 	}
-	//bfs.imageMessageId = SendImage(img)
 	return img
 }
 
 blackjack = {
-	"start": () => {
-		bjs.newTurn()
-		img :=drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
-		msg = {
-			"content": "Play Blackjack!\n" + bj_summary(),
-			"components": blackjack.stateToComponents()
-		}
-		ChannelMessageSendComplex(msg, img)
-	},
-	"stateToComponents": () => {
+	"stateToComponents": (state) => {
 		buttons = []
-		if bjs.player_balance < bjs.bet {
-			buttons = buttons + [discord.button("Out of money! (need $" + str(bjs.bet) + " min)",  discord.buttonStyle.danger, "bj_new")]
-		} else if bjs.end_game {
+		if state.player_balance < state.bet {
+			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, "bj_new")]
+		} else if state.end_game {
 			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
 		} else {
-			nbsp := " " // U+A0
 			buttons = buttons + [
-				discord.button( "➕ Hit ➕", discord.buttonStyle.primary, "bj_hit"),
+				discord.button("➕ Hit ➕", discord.buttonStyle.primary, "bj_hit"),
 				discord.button("✋ Stand", discord.buttonStyle.success, "bj_stand")
 			]
 		}
 		[discord.actionRow(buttons)]
 	},
 	"doInteraction": (msgId, userId, map) => {
-		// Only handle bj_ custom_ids
+		state := discord_state[msgId]
+		if state == nil || state.help {
+			state = bjs.initialState()
+			state.decks = shuffle(fullDeck()*state.num_decks)
+		}
 		clicked = map.custom_id
 		tag := "<@" + userId + ">"
-		if clicked == "bj_new" {
-			bjs.newTurn()
-		} else if clicked == "bj_hit" {
-			bjs.hit()
-		} else if clicked == "bj_stand" {
-			bjs.completeDealerTurn()
-		} else {
-			// must be new state
-			bjs.newTurn()
+		if state.player_balance < state.bet {
+			InteractionRespond({
+				"type": discord.interaction.update_message,
+				"data": {
+					"content": sprintf("You played %d rounds, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", state.rounds_played, state.highest_balance),
+					"components": []
+				}
+			})
+			return
 		}
-		img := drawBlackjackTable(bjs.player_hand, bjs.dealer_hand, !bjs.end_game)
+		if clicked == "bj_hit" {
+			bjs.hit(state)
+		} else if clicked == "bj_stand" {
+			bjs.completeDealerTurn(state)
+		} else {
+			bjs.newTurn(state)
+		}
+		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
 		InteractionRespond({
 			"type": discord.interaction.update_message,
 			"data": {
-				"content": tag+" "+ bj_summary(),
-				"components": blackjack.stateToComponents()
+				"content": tag + " " + blackjack.summary(state),
+				"components": blackjack.stateToComponents(state)
 			}
 		}, img)
+		discord_state[msgId] = state
+	},
+	"summary": (state) => {
+		extra := ""
+		if state.lastchange == 1.5 {
+			extra = "💵💰 "
+		} else if state.lastchange == -1 {
+			extra = "💀 "
+		} else if state.lastchange == 0 {
+			extra = "🤝 "
+		} else if state.lastchange == 1 {
+			extra = "💵 "
+		}
+		return sprintf("%s%s\t\tBalance: $%d (High: $%d)", extra, state.summary, state.player_balance, state.highest_balance)
 	}
 }
 
 func Blackjack() {
-	bjs.player_balance = 100 // reset balance if called again.
-	blackjack.start()
-}
-
-
-func playBlackjackTextMode() {
-	printf("Play Blackjack!\n")
-	bjs.player_balance = 100 // reset balance if called again.
-	bjs.do_print = true
-	bjs.end_game = true
-	printf("Player balance: $%d - bet $%d\n", bjs.player_balance, bjs.bet)
-	println("h() to hit, s() to stand.")
-	bjOneTurn()
-}
-
-func bjOneTurn() {
-	if bjs.player_balance < bjs.bet {
-		printf("You ran out of money (need $%d min)! Game over, player balance: $%d\n", bjs.bet, bjs.player_balance)
-		return
+	help := "## 🎲 Blackjack Rules:\n" +
+		"- 🎯 Get closer to 21 than the dealer without going over\n" +
+		"- 🃏 Cards 2-10 are worth their face value, J/Q/K are 10, A is 1 or 11\n" +
+		"- 👨‍💼 Dealer must hit on 16 or lower, stand on 17 or higher\n" +
+		"- 💰 Blackjack (A + 10/J/Q/K) pays 3:2\n" +
+		"- ⬆️ Top row shows dealer's cards, bottom row is your hand\n" +
+		"- 💵 Start with $100, bet $10 per hand"
+	msg := {
+		"content": help,
+		"components": [discord.actionRow([discord.button("🎮 Let'sPlay! 🎮", discord.buttonStyle.success, "bj_start")])]
 	}
-	for bjs.end_game { // multiple blackjacks in a row
-		bjs.newTurn()
-	}
-}
-func h() {
-	printf("Player hit requested\n")
-	bjs.hit()
-	bjOneTurn()
-}
-
-func s() {
-	printf("Player stand requested\n")
-	bjs.completeDealerTurn()
-	bjOneTurn()
+	msgId := ChannelMessageSendComplex(msg)
+	discord_state[msgId] = {"help": true}
 }
 
 // --- Card demo ---
@@ -814,18 +775,6 @@ func card(img, x, y, w, h, suit, face) {
 
 func CardDemo() {
 	FourCards([["A","♥"], ["K","♣"], ["Q","♠"], ["J","♦"]])
-}
-
-func randomCard() {
-	bjs.dealCard()[0]
-}
-
-func RandomCards() {
-	rcards := []
-	for i = 4 {
-		rcards = rcards + [randomCard()]
-	}
-	FourCards(rcards)
 }
 
 func FourCards(cards) {
