@@ -9,7 +9,7 @@ require (
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.28.1
 	golang.org/x/term v0.32.0
-	grol.io/grol v0.86.1
+	grol.io/grol v0.87.0
 )
 
 // replace grol.io/grol => ../grol
