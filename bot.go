@@ -258,8 +258,8 @@ func evalInput(input string, p *CommandParams) string {
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc..." +
-			" Try `TicTacToe()` or `Butterfly()` for more advanced examples that includes grol handling discord interactions" +
-			" and complex messages.\n\n" +
+			" Try `TicTacToe()` or `Butterfly()` or `Blackjack()` for more advanced examples that include grol" +
+			" handling discord interactions and complex messages.\n\n" +
 			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
 			" `-d` debug expressions)" +
 			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n" +
@@ -279,7 +279,7 @@ func evalInput(input string, p *CommandParams) string {
 			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	case "reset":
 		if !IsAdmin(p.message.Author.ID) {
-			return errorsBlock([]string{"Only the bot admin can reset the bot - please ask <@" + BotAdmin + ">"})
+			return "⛔️ Only the bot admin can reset the bot, please ask <@" + BotAdmin + ">"
 		}
 		log.Critf("Admin %s requested reset", p.message.Author.ID)
 		scheduleReset(p.session)
