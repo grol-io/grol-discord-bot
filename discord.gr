@@ -283,7 +283,6 @@ func fullDeck() {
 bjs = {
 	"initialState": () => {
 		{
-			"do_print": true,
 			"num_decks": 1,
 			"new_decks_at": 0, // so folks can count cards easier
 			"decks": [],
@@ -318,7 +317,7 @@ bjs = {
 		state.lastchange = -9
 		state.end_game = false
 		state.player_hand_value = bjs.handValue(state.player_hand)
-		state.summary = "New turn (" + str(state.rounds_played) + "). Player hand " + str(state.player_hand_value) + " pts"
+		state.summary = "Turn #" + str(state.rounds_played) + ". Player hand " + str(state.player_hand_value) + " pts"
 		bjs.earlyPlayerStop(state)
 	},
 	"earlyPlayerStop": (state) => {
@@ -422,8 +421,8 @@ bjs = {
 
 // Draws the blackjack table: player cards in one row, dealer cards in another
 func drawBlackjackTable(player, dealer, hide) {
-	cardW := 90.0  // Half of 180.0
-	cardH := 120.0  // Half of 240.0
+	cardW := 90.0
+	cardH := 120.0
 	margin := 20.0
 	rows := 2
 	maxCards := max(len(player), len(dealer))
@@ -454,18 +453,6 @@ func drawBlackjackTable(player, dealer, hide) {
 }
 
 blackjack = {
-	"start": () => {
-		state := bjs.initialState()
-		state.decks = shuffle(fullDeck()*state.num_decks)
-		bjs.newTurn(state)
-		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
-		msg = {
-			"content": "Play Blackjack!\n" + blackjack.summary(state),
-			"components": blackjack.stateToComponents(state)
-		}
-		msgId := ChannelMessageSendComplex(msg, img)
-		discord_state[msgId] = state
-	},
 	"stateToComponents": (state) => {
 		buttons = []
 		if state.player_balance < state.bet {
@@ -482,7 +469,7 @@ blackjack = {
 	},
 	"doInteraction": (msgId, userId, map) => {
 		state := discord_state[msgId]
-		if state == nil {
+		if state == nil || state.help {
 			state = bjs.initialState()
 			state.decks = shuffle(fullDeck()*state.num_decks)
 		}
@@ -531,9 +518,20 @@ blackjack = {
 }
 
 func Blackjack() {
-	blackjack.start()
+	help := "## 🎲 Blackjack Rules:\n" +
+		"- 🎯 Get closer to 21 than the dealer without going over\n" +
+		"- 🃏 Cards 2-10 are worth their face value, J/Q/K are 10, A is 1 or 11\n" +
+		"- 👨‍💼 Dealer must hit on 16 or lower, stand on 17 or higher\n" +
+		"- 💰 Blackjack (A + 10/J/Q/K) pays 3:2\n" +
+		"- ⬆️ Top row shows dealer's cards, bottom row is your hand\n" +
+		"- 💵 Start with $100, bet $10 per hand"
+	msg := {
+		"content": help,
+		"components": [discord.actionRow([discord.button("🎮 Let'sPlay! 🎮", discord.buttonStyle.success, "bj_start")])]
+	}
+	msgId := ChannelMessageSendComplex(msg)
+	discord_state[msgId] = {"help": true}
 }
-
 
 // --- Card demo ---
 // Fancier heart shape based on SVG quadratic commands translated to grol.
