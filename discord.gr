@@ -334,6 +334,16 @@ blackjack = {
 		}
 		clicked = map.custom_id
 		tag := "<@" + userId + ">"
+		if state.player_balance < state.bet {
+			InteractionRespond({
+				"type": discord.interaction.update_message,
+				"data": {
+					"content": sprintf("You played %d rounds, had a maximum of $%d, now lost - use `!grol Blackjack()` to start a new game", state.rounds_played, state.highest_balance),
+					"components": []
+				}
+			})
+			return
+		}
 		if clicked == "bj_hit" {
 			blackjack.hit(state)
 		} else if clicked == "bj_stand" {
