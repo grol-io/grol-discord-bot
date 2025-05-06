@@ -285,7 +285,7 @@ bjs = {
 		{
 			"do_print": true,
 			"num_decks": 1,
-			"new_decks_at": 0,
+			"new_decks_at": 0, // so folks can count cards easier
 			"decks": [],
 			"player_hand": [],
 			"dealer_hand": [],
@@ -335,7 +335,6 @@ bjs = {
 		bjs.earlyPlayerStop(state)
 	},
 	"dealerHit": (state) => {
-		prevValue := state.dealer_hand_value
 		state.dealer_hand = state.dealer_hand + bjs.dealCard(state)
 		state.dealer_hand_value = bjs.handValue(state.dealer_hand)
 	},
@@ -343,6 +342,7 @@ bjs = {
 		if state.dealer_hand_value == 0 {
 			state.dealer_hand_value = bjs.handValue(state.dealer_hand)
 		}
+		// hit until 17 or higher
 		return state.dealer_hand_value <= 16
 	},
 	"completeDealerTurn": (state) => {
