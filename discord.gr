@@ -280,7 +280,7 @@ func fullDeck() {
 	return deck
 }
 
-blackjack = {
+bjs = {
 	"initialState": () => {
 		{
 			"do_print": true,
@@ -300,78 +300,17 @@ blackjack = {
 			"highest_balance": 100
 		}
 	},
-	"start": () => {
-		state := blackjack.initialState()
-		state.decks = shuffle(fullDeck()*state.num_decks)
-		blackjack.newTurn(state)
-		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
-		msg = {
-			"content": "Play Blackjack!\n" + blackjack.summary(state),
-			"components": blackjack.stateToComponents(state)
-		}
-		msgId := ChannelMessageSendComplex(msg, img)
-		discord_state[msgId] = state
-	},
-	"stateToComponents": (state) => {
-		buttons = []
-		if state.player_balance < state.bet {
-			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, "bj_new")]
-		} else if state.end_game {
-			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
-		} else {
-			buttons = buttons + [
-				discord.button("➕ Hit ➕", discord.buttonStyle.primary, "bj_hit"),
-				discord.button("✋ Stand", discord.buttonStyle.success, "bj_stand")
-			]
-		}
-		[discord.actionRow(buttons)]
-	},
-	"doInteraction": (msgId, userId, map) => {
-		state := discord_state[msgId]
-		if state == nil {
-			state = blackjack.initialState()
-			state.decks = shuffle(fullDeck()*state.num_decks)
-		}
-		clicked = map.custom_id
-		tag := "<@" + userId + ">"
-		if state.player_balance < state.bet {
-			InteractionRespond({
-				"type": discord.interaction.update_message,
-				"data": {
-					"content": sprintf("You played %d rounds, had a maximum of $%d, now lost - use `!grol Blackjack()` to start a new game", state.rounds_played, state.highest_balance),
-					"components": []
-				}
-			})
-			return
-		}
-		if clicked == "bj_hit" {
-			blackjack.hit(state)
-		} else if clicked == "bj_stand" {
-			blackjack.completeDealerTurn(state)
-		} else {
-			blackjack.newTurn(state)
-		}
-		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
-		InteractionRespond({
-			"type": discord.interaction.update_message,
-			"data": {
-				"content": tag + " " + blackjack.summary(state),
-				"components": blackjack.stateToComponents(state)
-			}
-		}, img)
-		discord_state[msgId] = state
-	},
 	"newTurn": (state) => {
-		state.dealer_hand = blackjack.dealCard(state)
-		state.dealer_hand = state.dealer_hand + blackjack.dealCard(state)
+		state.dealer_hand = bjs.dealCard(state)
+		state.dealer_hand = state.dealer_hand + bjs.dealCard(state)
 		state.dealer_hand_value = 0
-		state.player_hand = blackjack.dealCard(state)
-		state.player_hand = state.player_hand + blackjack.dealCard(state)
+		state.player_hand = bjs.dealCard(state)
+		state.player_hand = state.player_hand + bjs.dealCard(state)
 		state.lastchange = -9
 		state.end_game = false
-		state.player_hand_value = blackjack.handValue(state.player_hand)
+		state.player_hand_value = bjs.handValue(state.player_hand)
 		state.summary = "New turn (" + str(state.rounds_played) + "). Player hand " + str(state.player_hand_value) + " pts"
-		blackjack.earlyPlayerStop(state)
+		bjs.earlyPlayerStop(state)
 	},
 	"dealCard": (state) => {
 		card := state.decks[0]
@@ -384,37 +323,37 @@ blackjack = {
 	},
 	"earlyPlayerStop": (state) => {
 		if state.player_hand_value > 21 {
-			blackjack.completeDealerTurn(state)
+			bjs.completeDealerTurn(state)
 		} else if state.player_hand_value == 21 {
-			blackjack.completeDealerTurn(state)
+			bjs.completeDealerTurn(state)
 		}
 	},
 	"hit": (state) => {
-		state.player_hand = state.player_hand + blackjack.dealCard(state)
-		state.player_hand_value = blackjack.handValue(state.player_hand)
+		state.player_hand = state.player_hand + bjs.dealCard(state)
+		state.player_hand_value = bjs.handValue(state.player_hand)
 		state.summary = "Player hit, hand is now " + str(state.player_hand_value) + " pts"
-		blackjack.earlyPlayerStop(state)
+		bjs.earlyPlayerStop(state)
 	},
 	"dealerHit": (state) => {
 		prevValue := state.dealer_hand_value
-		state.dealer_hand = state.dealer_hand + blackjack.dealCard(state)
-		state.dealer_hand_value = blackjack.handValue(state.dealer_hand)
+		state.dealer_hand = state.dealer_hand + bjs.dealCard(state)
+		state.dealer_hand_value = bjs.handValue(state.dealer_hand)
 	},
 	"dealerStrategy": (state) => {
 		if state.dealer_hand_value == 0 {
-			state.dealer_hand_value = blackjack.handValue(state.dealer_hand)
+			state.dealer_hand_value = bjs.handValue(state.dealer_hand)
 		}
 		return state.dealer_hand_value <= 16
 	},
 	"completeDealerTurn": (state) => {
-		state.dealer_hand_value = blackjack.handValue(state.dealer_hand)
-		for blackjack.dealerStrategy(state) {
-			blackjack.dealerHit(state)
+		state.dealer_hand_value = bjs.handValue(state.dealer_hand)
+		for bjs.dealerStrategy(state) {
+			bjs.dealerHit(state)
 		}
-		blackjack.evaluateGame(state)
+		bjs.evaluateGame(state)
 	},
 	"evaluateGame": (state) => {
-		state.lastchange = blackjack.evaluateGameDetails(state)
+		state.lastchange = bjs.evaluateGameDetails(state)
 		state.player_balance = round(state.player_balance + state.lastchange*state.bet)
 		if state.player_balance > state.highest_balance {
 			state.highest_balance = state.player_balance
@@ -423,8 +362,8 @@ blackjack = {
 		state.end_game = true
 	},
 	"evaluateGameDetails": (state) => {
-		pbj := blackjack.isBlackjack(state.player_hand)
-		dbj := blackjack.isBlackjack(state.dealer_hand)
+		pbj := bjs.isBlackjack(state.player_hand)
+		dbj := bjs.isBlackjack(state.dealer_hand)
 		if pbj {
 			if dbj {
 				state.summary = "Both blackjack, Push"
@@ -458,7 +397,7 @@ blackjack = {
 		return 0
 	},
 	"isBlackjack": (hand) => {
-		return len(hand) == 2 && blackjack.handValue(hand) == 21
+		return len(hand) == 2 && bjs.handValue(hand) == 21
 	},
 	"handValue": (hand) => {
 		value := 0
@@ -478,6 +417,70 @@ blackjack = {
 			count_aces--
 		}
 		return value
+	}
+}
+
+blackjack = {
+	"start": () => {
+		state := bjs.initialState()
+		state.decks = shuffle(fullDeck()*state.num_decks)
+		bjs.newTurn(state)
+		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
+		msg = {
+			"content": "Play Blackjack!\n" + blackjack.summary(state),
+			"components": blackjack.stateToComponents(state)
+		}
+		msgId := ChannelMessageSendComplex(msg, img)
+		discord_state[msgId] = state
+	},
+	"stateToComponents": (state) => {
+		buttons = []
+		if state.player_balance < state.bet {
+			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, "bj_new")]
+		} else if state.end_game {
+			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
+		} else {
+			buttons = buttons + [
+				discord.button("➕ Hit ➕", discord.buttonStyle.primary, "bj_hit"),
+				discord.button("✋ Stand", discord.buttonStyle.success, "bj_stand")
+			]
+		}
+		[discord.actionRow(buttons)]
+	},
+	"doInteraction": (msgId, userId, map) => {
+		state := discord_state[msgId]
+		if state == nil {
+			state = bjs.initialState()
+			state.decks = shuffle(fullDeck()*state.num_decks)
+		}
+		clicked = map.custom_id
+		tag := "<@" + userId + ">"
+		if state.player_balance < state.bet {
+			InteractionRespond({
+				"type": discord.interaction.update_message,
+				"data": {
+					"content": sprintf("You played %d rounds, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", state.rounds_played, state.highest_balance),
+					"components": []
+				}
+			})
+			return
+		}
+		if clicked == "bj_hit" {
+			bjs.hit(state)
+		} else if clicked == "bj_stand" {
+			bjs.completeDealerTurn(state)
+		} else {
+			bjs.newTurn(state)
+		}
+		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
+		InteractionRespond({
+			"type": discord.interaction.update_message,
+			"data": {
+				"content": tag + " " + blackjack.summary(state),
+				"components": blackjack.stateToComponents(state)
+			}
+		}, img)
+		discord_state[msgId] = state
 	},
 	"summary": (state) => {
 		extra := ""
