@@ -296,7 +296,8 @@ bjs = {
 			"summary": "",
 			"lastchange": 0,
 			"rounds_played": 1,
-			"highest_balance": 100
+			"highest_balance": 100,
+			"timestamp": time.now() // Add timestamp when game is created
 		}
 	},
 	"dealCard": (state) => {
@@ -457,6 +458,9 @@ blackjack = {
 		buttons = []
 		if state.player_balance < state.bet {
 			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, "bj_new")]
+			del(state.decks)
+			del(state.player_hand)
+			del(state.dealer_hand)
 		} else if state.end_game {
 			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
 		} else {
@@ -483,6 +487,7 @@ blackjack = {
 					"components": []
 				}
 			})
+			del(discord_state[msgId])
 			return
 		}
 		if clicked == "bj_hit" {
@@ -492,6 +497,8 @@ blackjack = {
 		} else {
 			bjs.newTurn(state)
 		}
+		// Update timestamp on each interaction
+		state.timestamp = time.now()
 		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
 		InteractionRespond({
 			"type": discord.interaction.update_message,
@@ -517,6 +524,22 @@ blackjack = {
 	}
 }
 
+func cleanupDiscordState() {
+	now := time.now()
+	// 25 hours in seconds
+	maxAge := 25 * 60 * 60
+	for msgId := discord_state {
+		state := discord_state[msgId]
+		// Only cleanup blackjack games
+		if state != nil && state.timestamp != nil {
+			age := now - state.timestamp
+			if age > maxAge {
+				del(discord_state[msgId])
+			}
+		}
+	}
+}
+
 func Blackjack() {
 	help := "## 🎲 Blackjack Rules:\n" +
 		"- 🎯 Get closer to 21 than the dealer without going over\n" +
@@ -529,6 +552,7 @@ func Blackjack() {
 		"content": help,
 		"components": [discord.actionRow([discord.button("🎮 Let'sPlay! 🎮", discord.buttonStyle.success, "bj_start")])]
 	}
+	cleanupDiscordState()
 	msgId := ChannelMessageSendComplex(msg)
 	discord_state[msgId] = {"help": true}
 }
