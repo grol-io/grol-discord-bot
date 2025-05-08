@@ -514,7 +514,7 @@ blackjack = {
 		}
 		if clicked[0:7] == "bj_hit_" {
 			bjs.hit(state)
-		} else if clicked[0:8] == "bj_stand_" {
+		} else if clicked[0:9] == "bj_stand_" {
 			bjs.completeDealerTurn(state)
 		} else {
 			bjs.newTurn(state)

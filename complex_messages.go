@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"fortio.org/log"
+	"fortio.org/safecast"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol/eval"
 	"grol.io/grol/extensions"
@@ -17,6 +18,7 @@ import (
 )
 
 // Global mutex to protect Grol interpreter execution
+// (state loading/saving mostly and thus game state).
 var grolMutex sync.Mutex
 
 func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, msg string) {
@@ -227,7 +229,7 @@ func MsgMapToInteractionResponse(msg object.Map) *discordgo.InteractionResponse 
 	interactionType := discordgo.InteractionResponseUpdateMessage
 	if typePart, found := msg.Get(object.String{Value: "type"}); found {
 		if typeNum, ok := typePart.(object.Integer); ok {
-			interactionType = discordgo.InteractionResponseType(typeNum.Value)
+			interactionType = safecast.MustConvert[discordgo.InteractionResponseType](typeNum.Value)
 		}
 	}
 	return &discordgo.InteractionResponse{
