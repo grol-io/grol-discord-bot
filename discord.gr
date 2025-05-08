@@ -71,7 +71,8 @@ discord = {
 		"link": 5
 	},
   "interaction" : {
-		"update_message" : 7
+		"update_message" : 7,
+		"message_with_source" : 4
 	},
   "doInteraction" : (msgId, userId, map) => { // tic-tac-toe example
 	clicked = map.custom_id
@@ -290,7 +291,7 @@ bjs = {
 			"dealer_hand": [],
 			"player_hand_value": 0,
 			"dealer_hand_value": 0,
-			"player_balance": 100,
+			"player_balance": 20,
 			"bet": 10,
 			"end_game": true,
 			"summary": "",
@@ -457,16 +458,16 @@ blackjack = {
 	"stateToComponents": (state) => {
 		buttons = []
 		if state.player_balance < state.bet {
-			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, "bj_new")]
+			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, sprintf("bj_new_%d", state.rounds_played))]
 			del(state.decks)
 			del(state.player_hand)
 			del(state.dealer_hand)
 		} else if state.end_game {
-			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, "bj_new")]
+			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, sprintf("bj_new_%d", state.rounds_played))]
 		} else {
 			buttons = buttons + [
-				discord.button("➕ Hit ➕", discord.buttonStyle.primary, "bj_hit"),
-				discord.button("✋ Stand", discord.buttonStyle.success, "bj_stand")
+				discord.button("➕ Hit ➕", discord.buttonStyle.primary, sprintf("bj_hit_%d", state.rounds_played)),
+				discord.button("✋ Stand", discord.buttonStyle.success, sprintf("bj_stand_%d", state.rounds_played))
 			]
 		}
 		[discord.actionRow(buttons)]
@@ -483,16 +484,41 @@ blackjack = {
 			InteractionRespond({
 				"type": discord.interaction.update_message,
 				"data": {
-					"content": sprintf("You played %d rounds, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", state.rounds_played, state.highest_balance),
+					"content": sprintf(" %s %d rounds played, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", tag, state.rounds_played, state.highest_balance),
 					"components": []
 				}
 			})
 			del(discord_state[msgId])
 			return
 		}
-		if clicked == "bj_hit" {
+		// Extract round number from custom_id if present
+		bround := 0
+		if len(clicked) > 7 { // bj_hit_ or bj_stand_ or bj_new_ + number
+			parts := split(clicked, "_")
+			if len(parts) == 3 {
+				bround = int(parts[2])
+			}
+		}
+		// For bj_new, we want to allow the current round or the previous round
+		// since rounds_played is incremented at the end of the game
+		if bround > 0 && bround != state.rounds_played {
+			log("Got round", bround, "from", clicked, "but expected", state.rounds_played)
+			// Send ephemeral message to user without affecting game state
+			InteractionRespond({
+				"type":  discord.interaction.message_with_source,
+				"data": {
+					"content": tag + " This action is no longer valid - the game has moved on. " +
+					"use `!grol Blackjack()` to start a new game.",
+					"flags": 64 // Ephemeral flag
+				}
+			})
+			return
+		} else {
+			log("Valid round", bround, "from", clicked, "expected", state.rounds_played)
+		}
+		if clicked[0:7] == "bj_hit_" {
 			bjs.hit(state)
-		} else if clicked == "bj_stand" {
+		} else if clicked[0:8] == "bj_stand_" {
 			bjs.completeDealerTurn(state)
 		} else {
 			bjs.newTurn(state)

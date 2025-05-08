@@ -113,6 +113,8 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 		name, fn := InteractionRespondFunction(&st)
 		state.Extensions[name] = fn
+		name, fn = ChannelMessageSendComplexFunction(&st)
+		state.Extensions[name] = fn
 	}
 	res, errs, _ := repl.EvalStringWithOption(context.Background(), cfg, code)
 	log.Infof("Interaction (ignored) result: %q errs %v", res, errs)
@@ -208,11 +210,19 @@ func MsgMapToInteractionResponse(msg object.Map) *discordgo.InteractionResponse 
 	}
 	ir.Content = dm.Content
 	ir.Components = dm.Components
+	ir.Flags = dm.Flags
 	ir.AllowedMentions = &discordgo.MessageAllowedMentions{
 		Parse: []discordgo.AllowedMentionType{},
 	}
+	// Get interaction type from map, default to UpdateMessage if not specified
+	interactionType := discordgo.InteractionResponseUpdateMessage
+	if typePart, found := msg.Get(object.String{Value: "type"}); found {
+		if typeNum, ok := typePart.(object.Integer); ok {
+			interactionType = discordgo.InteractionResponseType(typeNum.Value)
+		}
+	}
 	return &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseUpdateMessage,
+		Type: interactionType,
 		Data: &ir,
 	}
 }
