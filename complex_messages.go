@@ -6,14 +6,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/png"
+	"sync"
 
 	"fortio.org/log"
+	"fortio.org/safecast"
 	"github.com/bwmarrin/discordgo"
 	"grol.io/grol/eval"
 	"grol.io/grol/extensions"
 	"grol.io/grol/object"
 	"grol.io/grol/repl"
 )
+
+// Global mutex to protect Grol interpreter execution
+// (state loading/saving mostly and thus game state).
+var grolMutex sync.Mutex
 
 func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, msg string) {
 	log.S(log.Warning, msg, log.Any("author", userID))
@@ -113,8 +119,15 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 		name, fn := InteractionRespondFunction(&st)
 		state.Extensions[name] = fn
+		name, fn = ChannelMessageSendComplexFunction(&st)
+		state.Extensions[name] = fn
 	}
+
+	// Lock the mutex before running the Grol interpreter
+	grolMutex.Lock()
 	res, errs, _ := repl.EvalStringWithOption(context.Background(), cfg, code)
+	grolMutex.Unlock()
+
 	log.Infof("Interaction (ignored) result: %q errs %v", res, errs)
 	if len(errs) > 0 {
 		p := &CommandParams{
@@ -208,11 +221,19 @@ func MsgMapToInteractionResponse(msg object.Map) *discordgo.InteractionResponse 
 	}
 	ir.Content = dm.Content
 	ir.Components = dm.Components
+	ir.Flags = dm.Flags
 	ir.AllowedMentions = &discordgo.MessageAllowedMentions{
 		Parse: []discordgo.AllowedMentionType{},
 	}
+	// Get interaction type from map, default to UpdateMessage if not specified
+	interactionType := discordgo.InteractionResponseUpdateMessage
+	if typePart, found := msg.Get(object.String{Value: "type"}); found {
+		if typeNum, ok := typePart.(object.Integer); ok {
+			interactionType = safecast.MustConvert[discordgo.InteractionResponseType](typeNum.Value)
+		}
+	}
 	return &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseUpdateMessage,
+		Type: interactionType,
 		Data: &ir,
 	}
 }
