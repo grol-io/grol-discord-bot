@@ -291,7 +291,7 @@ bjs = {
 			"dealer_hand": [],
 			"player_hand_value": 0,
 			"dealer_hand_value": 0,
-			"player_balance": 20,
+			"player_balance": 100,
 			"bet": 10,
 			"end_game": true,
 			"summary": "",
@@ -499,8 +499,6 @@ blackjack = {
 				bround = int(parts[2])
 			}
 		}
-		// For bj_new, we want to allow the current round or the previous round
-		// since rounds_played is incremented at the end of the game
 		if bround > 0 && bround != state.rounds_played {
 			log("Got round", bround, "from", clicked, "but expected", state.rounds_played)
 			// Send ephemeral message to user without affecting game state
@@ -513,8 +511,6 @@ blackjack = {
 				}
 			})
 			return
-		} else {
-			log("Valid round", bround, "from", clicked, "expected", state.rounds_played)
 		}
 		if clicked[0:7] == "bj_hit_" {
 			bjs.hit(state)
