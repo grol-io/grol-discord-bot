@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/png"
+	"sync"
 
 	"fortio.org/log"
 	"github.com/bwmarrin/discordgo"
@@ -14,6 +15,9 @@ import (
 	"grol.io/grol/object"
 	"grol.io/grol/repl"
 )
+
+// Global mutex to protect Grol interpreter execution
+var grolMutex sync.Mutex
 
 func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, msg string) {
 	log.S(log.Warning, msg, log.Any("author", userID))
@@ -116,7 +120,12 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		name, fn = ChannelMessageSendComplexFunction(&st)
 		state.Extensions[name] = fn
 	}
+
+	// Lock the mutex before running the Grol interpreter
+	grolMutex.Lock()
 	res, errs, _ := repl.EvalStringWithOption(context.Background(), cfg, code)
+	grolMutex.Unlock()
+
 	log.Infof("Interaction (ignored) result: %q errs %v", res, errs)
 	if len(errs) > 0 {
 		p := &CommandParams{

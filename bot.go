@@ -73,7 +73,9 @@ func Run(maxHistoryLength int) int {
 	// Eval the library and save it.
 	opts := repl.EvalStringOptions()
 	opts.AutoSave = true // force saving the library to compact form even if autosave is off for user messages.
+	grolMutex.Lock()
 	res, errs, _ := repl.EvalStringWithOption(context.Background(), opts, libraryCode)
+	grolMutex.Unlock()
 	if len(errs) > 0 {
 		log.S(log.Critical, "Errors in library eval", log.Any("errors", errs))
 	}
@@ -311,7 +313,9 @@ func evalInput(input string, p *CommandParams) string {
 		}
 		// Turn smart quotes back into regular quotes - https://github.com/grol-io/grol-discord-bot/issues/57
 		input = SmartQuotesToRegular(input)
+		grolMutex.Lock()
 		evalres, errs, formatted := repl.EvalStringWithOption(context.Background(), cfg, input)
+		grolMutex.Unlock()
 		if (p.formatMode || p.compactMode || p.debugParenMode) && formatted != "" {
 			res = formatModeStr
 			if p.compactMode {
@@ -641,7 +645,9 @@ func slashCmdInteraction(session *discordgo.Session, interaction *discordgo.Inte
 			compactMode:  false,
 			verbatimMode: false,
 		}
+		grolMutex.Lock()
 		responseMessage := evalInput(option, p)
+		grolMutex.Unlock()
 		response := &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
