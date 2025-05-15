@@ -300,7 +300,9 @@ bjs = {
 			"lastchange": 0,
 			"rounds_played": 1,
 			"highest_balance": 100,
-			"timestamp": 0 // placeholder for timestamp when game is created
+			"timestamp": 0, // placeholder for timestamp when game is created
+			"first_user_id": nil, // ID of first user to interact with the game
+			"last_user_id": nil // ID of last user to interact with the game
 		}
 	},
 	"dealCard": (state) => {
@@ -479,14 +481,16 @@ blackjack = {
 		if state == nil || state.help {
 			state = bjs.initialState()
 			state.decks = shuffle(fullDeck()*state.num_decks)
+			state.first_user_id = userId // Set first user on game creation
 		}
 		clicked = map.custom_id
 		tag := "<@" + userId + ">"
 		if state.player_balance < state.bet {
+			tag = "<@" + state.last_user_id + ">"
 			InteractionRespond({
 				"type": discord.interaction.update_message,
 				"data": {
-					"content": sprintf(" %s %d rounds played, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", tag, state.rounds_played, state.highest_balance),
+					"content": sprintf("%s %d rounds played, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", tag, state.rounds_played, state.highest_balance),
 					"components": []
 				}
 			})
@@ -521,8 +525,9 @@ blackjack = {
 		} else {
 			bjs.newTurn(state)
 		}
-		// Update timestamp on each interaction
+		// Update timestamp and last user on each interaction
 		state.timestamp = time.now()
+		state.last_user_id = userId
 		img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
 		InteractionRespond({
 			"type": discord.interaction.update_message,
@@ -559,10 +564,10 @@ func cleanupDiscordState() {
 		if state != nil && state.timestamp != nil {
 			age := now - state.timestamp
 			if age > maxAge {
-				log("Cleaning up blackjack game", msgId, "age", age, "maxAge", maxAge)
+				log("Cleaning up blackjack game", msgId, "age", age, "maxAge", maxAge, "created by", state.first_user_id, "last user", state.last_user_id)
 				del(discord_state[msgId])
 			} else {
-				log("Not cleaning up blackjack game", msgId, "age", age, "maxAge", maxAge)
+				log("Not cleaning up blackjack game", msgId, "age", age, "maxAge", maxAge, "created by", state.first_user_id, "last user", state.last_user_id)
 			}
 		} else {
 			log("Not cleaning up non blackjack state", msgId, "state", state)
