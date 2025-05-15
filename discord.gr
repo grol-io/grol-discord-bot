@@ -506,6 +506,10 @@ blackjack = {
 				bseq = int(parts[2])
 			}
 		}
+		if state.sequence == nil {
+			log("Setting sequence to 1 for game from before we started tracking sequences", msgId)
+			state.sequence = 1
+		}
 		if bseq > 0 && bseq != state.sequence {
 			log("Got sequence", bseq, "from", clicked, "but expected", state.sequence)
 			// If we have a valid state, refresh the view
