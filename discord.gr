@@ -140,7 +140,9 @@ discord = {
   }
 }
 
-discord_state = {}
+if !info.globals.discord_state {
+	discord_state = {}
+}
 
 // ---- tic tac toe ----
 
@@ -298,7 +300,7 @@ bjs = {
 			"lastchange": 0,
 			"rounds_played": 1,
 			"highest_balance": 100,
-			"timestamp": time.now() // Add timestamp when game is created
+			"timestamp": 0 // placeholder for timestamp when game is created
 		}
 	},
 	"dealCard": (state) => {
@@ -550,14 +552,20 @@ func cleanupDiscordState() {
 	now := time.now()
 	// 25 hours in seconds
 	maxAge := 25 * 60 * 60
-	for msgId := discord_state {
+	for kv := discord_state {
+		msgId := kv.key
 		state := discord_state[msgId]
 		// Only cleanup blackjack games
 		if state != nil && state.timestamp != nil {
 			age := now - state.timestamp
 			if age > maxAge {
+				log("Cleaning up blackjack game", msgId, "age", age, "maxAge", maxAge)
 				del(discord_state[msgId])
+			} else {
+				log("Not cleaning up blackjack game", msgId, "age", age, "maxAge", maxAge)
 			}
+		} else {
+			log("Not cleaning up non blackjack state", msgId, "state", state)
 		}
 	}
 }

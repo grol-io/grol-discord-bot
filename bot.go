@@ -72,6 +72,10 @@ func Run(maxHistoryLength int) int {
 
 	// Eval the library and save it.
 	opts := repl.EvalStringOptions()
+	if AutoSave {
+		// Restore current state on restart.
+		opts.AutoLoad = true
+	}
 	opts.AutoSave = true // force saving the library to compact form even if autosave is off for user messages.
 	grolMutex.Lock()
 	res, errs, _ := repl.EvalStringWithOption(context.Background(), opts, libraryCode)
