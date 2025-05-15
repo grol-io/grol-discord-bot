@@ -508,15 +508,27 @@ blackjack = {
 		}
 		if bseq > 0 && bseq != state.sequence {
 			log("Got sequence", bseq, "from", clicked, "but expected", state.sequence)
-			// Send ephemeral message to user without affecting game state
-			InteractionRespond({
-				"type":  discord.interaction.message_with_source,
-				"data": {
-					"content": tag + " This action is no longer valid - the game has moved on. " +
-					"use `!grol Blackjack()` to start a new game.",
-					"flags": 64 // Ephemeral flag
-				}
-			})
+			// If we have a valid state, refresh the view
+			if state.sequence > 0 {
+				img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
+				InteractionRespond({
+					"type": discord.interaction.update_message,
+					"data": {
+						"content": tag + " " + blackjack.summary(state),
+						"components": blackjack.stateToComponents(state)
+					}
+				}, img)
+			} else {
+				// No valid state, show error message
+				InteractionRespond({
+					"type":  discord.interaction.message_with_source,
+					"data": {
+						"content": tag + " This action is no longer valid - the game has expired. " +
+						"use `!grol Blackjack()` to start a new game.",
+						"flags": 64 // Ephemeral flag
+					}
+				})
+			}
 			return
 		}
 		// Increment sequence number for this interaction
