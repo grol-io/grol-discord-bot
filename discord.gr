@@ -302,7 +302,8 @@ bjs = {
 			"highest_balance": 100,
 			"timestamp": 0, // placeholder for timestamp when game is created
 			"first_user_id": nil, // ID of first user to interact with the game
-			"last_user_id": nil // ID of last user to interact with the game
+			"last_user_id": nil, // ID of last user to interact with the game
+			"sequence": 0 // Sequence number for button IDs only
 		}
 	},
 	"dealCard": (state) => {
@@ -462,16 +463,16 @@ blackjack = {
 	"stateToComponents": (state) => {
 		buttons = []
 		if state.player_balance < state.bet {
-			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, sprintf("bj_new_%d", state.rounds_played))]
+			buttons = buttons + [discord.button("Out of money! (need $" + str(state.bet) + " min)", discord.buttonStyle.danger, sprintf("bj_new_%d", state.sequence))]
 			del(state.decks)
 			del(state.player_hand)
 			del(state.dealer_hand)
 		} else if state.end_game {
-			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, sprintf("bj_new_%d", state.rounds_played))]
+			buttons = buttons + [discord.button("New Game", discord.buttonStyle.success, sprintf("bj_new_%d", state.sequence))]
 		} else {
 			buttons = buttons + [
-				discord.button("➕ Hit ➕", discord.buttonStyle.primary, sprintf("bj_hit_%d", state.rounds_played)),
-				discord.button("✋ Stand", discord.buttonStyle.success, sprintf("bj_stand_%d", state.rounds_played))
+				discord.button("➕ Hit ➕", discord.buttonStyle.primary, sprintf("bj_hit_%d", state.sequence)),
+				discord.button("✋ Stand", discord.buttonStyle.success, sprintf("bj_stand_%d", state.sequence))
 			]
 		}
 		[discord.actionRow(buttons)]
@@ -497,27 +498,41 @@ blackjack = {
 			del(discord_state[msgId])
 			return
 		}
-		// Extract round number from custom_id if present
-		bround := 0
+		// Extract sequence number from custom_id if present
+		bseq := 0
 		if len(clicked) > 7 { // bj_hit_ or bj_stand_ or bj_new_ + number
 			parts := split(clicked, "_")
 			if len(parts) == 3 {
-				bround = int(parts[2])
+				bseq = int(parts[2])
 			}
 		}
-		if bround > 0 && bround != state.rounds_played {
-			log("Got round", bround, "from", clicked, "but expected", state.rounds_played)
-			// Send ephemeral message to user without affecting game state
-			InteractionRespond({
-				"type":  discord.interaction.message_with_source,
-				"data": {
-					"content": tag + " This action is no longer valid - the game has moved on. " +
-					"use `!grol Blackjack()` to start a new game.",
-					"flags": 64 // Ephemeral flag
-				}
-			})
+		if bseq > 0 && bseq != state.sequence {
+			log("Got sequence", bseq, "from", clicked, "but expected", state.sequence)
+			// If we have a valid state, refresh the view
+			if state.sequence > 0 {
+				img := drawBlackjackTable(state.player_hand, state.dealer_hand, !state.end_game)
+				InteractionRespond({
+					"type": discord.interaction.update_message,
+					"data": {
+						"content": tag + " " + blackjack.summary(state),
+						"components": blackjack.stateToComponents(state)
+					}
+				}, img)
+			} else {
+				// No valid state, show error message
+				InteractionRespond({
+					"type":  discord.interaction.message_with_source,
+					"data": {
+						"content": tag + " This action is no longer valid - the game has expired. " +
+						"use `!grol Blackjack()` to start a new game.",
+						"flags": 64 // Ephemeral flag
+					}
+				})
+			}
 			return
 		}
+		// Increment sequence number for this interaction
+		state.sequence = state.sequence + 1
 		if clicked[0:7] == "bj_hit_" {
 			bjs.hit(state)
 		} else if clicked[0:9] == "bj_stand_" {

@@ -377,19 +377,23 @@ type CommandParams struct {
 	formatMode, compactMode, debugParenMode, verbatimMode, useReply, hasErrors bool
 }
 
-// returns the id of the reply.
-func evalAndReply(session *discordgo.Session, info, input string, p *CommandParams) string {
-	res := evalInput(input, p)
+func TruncateMessage(msg, info, res string) string {
 	level := log.Info
-	msg := "response"
 	runes := []rune(res)
 	if len(runes) > MaxMessageLengthInRunes {
 		res = string(runes[:MaxMessageLengthInRunes]) +
 			fmt.Sprintf("```...truncated from %d characters (%d bytes)...", len(runes), len(res))
 		level = log.Warning
-		msg = "truncated response"
+		msg = "truncated " + msg
 	}
 	log.S(level, info, log.String(msg, res))
+	return res
+}
+
+// returns the id of the reply.
+func evalAndReply(session *discordgo.Session, info, input string, p *CommandParams) string {
+	evalres := evalInput(input, p)
+	res := TruncateMessage("response", info, evalres)
 	return reply(session, res, p)
 }
 
