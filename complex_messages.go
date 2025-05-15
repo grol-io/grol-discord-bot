@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/png"
+	"strings"
 	"sync"
 
 	"fortio.org/log"
@@ -127,16 +128,17 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	grolMutex.Lock()
 	res, errs, _ := repl.EvalStringWithOption(context.Background(), cfg, code)
 	grolMutex.Unlock()
-
-	log.Infof("Interaction (ignored) result: %q errs %v", res, errs)
 	if len(errs) > 0 {
+		log.Errf("Error running code: %v\n%s", errs, res)
 		p := &CommandParams{
 			session:   s,
 			message:   i.Message,
 			channelID: i.ChannelID,
 		}
 		res += "<@" + userID + ">:" + errorsBlock(errs)
-		reply(s, res, p)
+		reply(s, TruncateMessage("interaction", "error", res), p)
+	} else {
+		log.Infof("Interaction (ignored) result:\n%s", strings.TrimSpace(res))
 	}
 }
 
