@@ -829,7 +829,7 @@ func card(img, x, y, w, h, suit, face) {
         color = [255, 0, 0] // red
         drawHeartPath(img, topLeftX, topLeftY, suitSize, suitSize, false)
         drawHeartPath(img, bottomRightX, bottomRightY, suitSize, suitSize, true)
-		image.draw(img, color)
+        image.draw(img, color)
     } else if suit == "♦" {
         // Diamonds
         color = [255, 0, 0] // red
@@ -843,7 +843,7 @@ func card(img, x, y, w, h, suit, face) {
         // Spades
         drawSpadePath(img, topLeftX, topLeftY, suitSize, suitSize, false)
         drawSpadePath(img, bottomRightX, bottomRightY, suitSize, suitSize, true)
-		image.draw(img, color)
+        image.draw(img, color)
     }
     // Draw face value
     faceSize := h * 0.333
