@@ -136,7 +136,7 @@ discord = {
 		"data": {"content": tag + " played " + clicked, "components": tictactoe.boardToComponents(state.board,i,j)}
 	})
 	// println("msgId", msgId, "New state", state)
-	discord_state[msgId] =  state // save state. annoyingly discord.state[msgId] = state doesn't work yet.
+	discord_state[msgId] =  state
   }
 }
 
