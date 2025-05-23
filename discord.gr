@@ -98,7 +98,7 @@ discord = {
 		return
 	}
 	if state.end != nil || state.turn >= 9 {
-		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": "Game is over <@" + userId + ">"}})
+		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": "Game is over <@" + userId + ">", "components": tictactoe.boardToComponents(state.board,state.lastI,state.lastJ)}})
 		return
 	}
 	state.turn = state.turn + 1 // no ++ on map/indexes yet.
@@ -116,7 +116,7 @@ discord = {
 		j=int(pair[1])-1
 	}
 	if state.board[i][j] != "" {
-		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied"}})
+		InteractionRespond({"type": discord.interaction.update_message, "data": {"content": clicked + " is already occupied", "components": tictactoe.boardToComponents(state.board,state.lastI,state.lastJ)}})
 		return
 	}
 	board = state.board
@@ -126,6 +126,8 @@ discord = {
 	state.board = board
 	state.next = tictactoe.next(state.next)
 	state.end = tictactoe.endGame(board)
+	state.lastI = i
+	state.lastJ = j
 	if state.end != nil{
 		clicked = clicked + ": " + state.end + " wins!"
 	} else if state.turn >= 9 {
