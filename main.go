@@ -29,7 +29,7 @@ func main() {
 	if BotToken == "" {
 		log.Fatalf("DISCORD_BOT_TOKEN must be set")
 	}
-	AutoSave = !(os.Getenv("GROL_DISABLE_AUTOSAVE") == "1")
+	AutoSave = os.Getenv("GROL_DISABLE_AUTOSAVE") != "1" // not set or not set to 1, we autosave.
 	memlimit := debug.SetMemoryLimit(-1)
 	if memlimit == math.MaxInt64 {
 		log.Fatalf("Memory limit not set, please set GOMEMLIMIT=1GiB or similar")

@@ -1,3 +1,4 @@
+# copied from fortio/workflows but simplified to only run on ubuntu-latest
 name: go-checks
 
 on:
@@ -15,9 +16,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4
       - name: Setup Go environment
-        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # pin@v5
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
           check-latest: true
       - name: Run Vulncheck
         run: |
@@ -26,7 +27,9 @@ jobs:
       - name: Download linter config
         run: curl -fsS -o .golangci.yml https://raw.githubusercontent.com/fortio/workflows/main/golangci.yml
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@ec5d18412c0aeab7936cb16880d708ba2a64e1ae # pin@v6
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # pin@v8
+        with:
+          version: v2.3.1
       - name: Run tests
         run: |
           go version
