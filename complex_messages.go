@@ -231,7 +231,7 @@ func MsgMapToInteractionResponse(msg object.Map) *discordgo.InteractionResponse 
 	interactionType := discordgo.InteractionResponseUpdateMessage
 	if typePart, found := msg.Get(object.String{Value: "type"}); found {
 		if typeNum, ok := typePart.(object.Integer); ok {
-			interactionType = safecast.MustConvert[discordgo.InteractionResponseType](typeNum.Value)
+			interactionType = safecast.MustConv[discordgo.InteractionResponseType](typeNum.Value)
 		}
 	}
 	return &discordgo.InteractionResponse{
