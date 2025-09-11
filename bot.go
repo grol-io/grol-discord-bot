@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"fortio.org/cli"
+	"fortio.org/duration"
 	"fortio.org/log"
 	"fortio.org/version"
 	"github.com/bwmarrin/discordgo"
@@ -201,16 +201,10 @@ func UptimeString(startTime time.Time) string {
 // DurationString returns a human readable string for a duration.
 // Expressed in days, hours, minutes, seconds and 10th of second.
 // days, hours etc are omitted if they are 0.
+// Now relies on duration's package. will also show weeks etc.
 func DurationString(d time.Duration) string {
 	rounded := d.Round(100 * time.Millisecond)
-	// get number of days out:
-	oneDay := 24 * time.Hour
-	days := int(rounded / oneDay)
-	if days == 0 {
-		return rounded.String()
-	}
-	rounded -= time.Duration(days) * oneDay
-	return strconv.Itoa(days) + "d" + rounded.String()
+	return duration.Duration(rounded).String()
 }
 
 const (
