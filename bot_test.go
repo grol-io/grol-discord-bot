@@ -17,13 +17,19 @@ func TestUptime(t *testing.T) {
 	}
 	delta = 23*time.Hour + 5*time.Minute
 	actual = bot.DurationString(delta)
-	expected = "23h5m0s"
+	expected = "23h5m"
 	if actual != expected {
 		t.Errorf("Expected %v, but got %v", expected, actual)
 	}
 	delta = 96*time.Hour - 100*time.Millisecond
 	actual = bot.DurationString(delta)
 	expected = "3d23h59m59.9s"
+	if actual != expected {
+		t.Errorf("Expected %v, but got %v", expected, actual)
+	}
+	delta = 8*24*time.Hour + 3*time.Minute
+	actual = bot.DurationString(delta)
+	expected = "1w1d3m"
 	if actual != expected {
 		t.Errorf("Expected %v, but got %v", expected, actual)
 	}
