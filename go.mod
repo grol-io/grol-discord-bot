@@ -7,7 +7,7 @@ require (
 	fortio.org/duration v1.0.4
 	fortio.org/log v1.17.2
 	fortio.org/safecast v1.2.0
-	fortio.org/scli v1.16.1
+	fortio.org/scli v1.17.1
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.29.0
 	grol.io/grol v0.92.2
@@ -16,7 +16,7 @@ require (
 // replace grol.io/grol => ../grol
 
 require (
-	fortio.org/dflag v1.8.1 // indirect
+	fortio.org/dflag v1.9.2 // indirect
 	fortio.org/sets v1.3.0 // indirect
 	fortio.org/struct2env v0.4.2 // indirect
 	fortio.org/terminal v0.52.2 // indirect
