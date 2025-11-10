@@ -346,19 +346,21 @@ func evalInput(input string, p *CommandParams) string {
 
 func errorsBlock(errs []string) string {
 	res := "```diff"
+	var resBuf strings.Builder
 	for i, e := range errs {
 		if i >= 2 {
 			n := len(errs) - i
-			res += fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error"))
+			resBuf.WriteString(fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error")))
 			break
 		}
-		res += "\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t")
+		resBuf.WriteString("\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t"))
 	}
+	res += resBuf.String()
 	res += "\n```Tip: _You can **edit** your message to correct instead of making a new one!_"
 	return res
 }
 
-// Discord's limit - some margin for that adding we are truncating, in characters/runes.
+// MaxMessageLengthInRunes is Discord's limit - some margin for that adding we are truncating, in characters/runes.
 const MaxMessageLengthInRunes = 2000 - 100
 
 type CommandParams struct {
