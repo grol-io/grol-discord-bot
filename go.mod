@@ -10,7 +10,7 @@ require (
 	fortio.org/scli v1.19.0
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.29.0
-	grol.io/grol v0.94.0
+	grol.io/grol v0.95.1
 )
 
 // replace grol.io/grol => ../grol
@@ -19,7 +19,7 @@ require (
 	fortio.org/dflag v1.9.3 // indirect
 	fortio.org/sets v1.3.0 // indirect
 	fortio.org/struct2env v0.4.2 // indirect
-	fortio.org/terminal v0.60.2 // indirect
+	fortio.org/terminal v0.60.3 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jbuchbinder/gopnm v0.0.0-20220507095634-e31f54490ce0 // indirect
