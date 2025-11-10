@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// Double Linked list node.
-// Note: wrote this before I saw containers/list (!).
+// Node is a double linked list node.
+// Note: wrote this before I saw container/list but then that one isn't using generics so this is better anyway.
 type Node[K, V any] struct {
 	Key      K
 	Value    V
