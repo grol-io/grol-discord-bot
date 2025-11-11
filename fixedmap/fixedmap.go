@@ -41,6 +41,7 @@ func (fs *FixedMap[K, V]) Add(key K, value V) (*Node[K, V], bool) {
 	defer fs.lock.Unlock()
 
 	if node, exists := fs.Map[key]; exists {
+		node.Value = value
 		fs.moveToHead(node)
 		return nil, false
 	}

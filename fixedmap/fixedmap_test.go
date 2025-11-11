@@ -36,4 +36,12 @@ func TestMap(t *testing.T) {
 	} else {
 		t.Error("Key d should be in the cache, but it was not found")
 	}
+	cache.Add("d", "5") // Update d
+	v, found := cache.Get("d")
+	if !found {
+		t.Error("Key d should be in the cache after update, but it was not found")
+	}
+	if v != "5" {
+		t.Errorf("Key d should have value 5 after update, got %s", v)
+	}
 }
