@@ -30,7 +30,7 @@ func NewFixedMap[K comparable, V any](maxV int) *FixedMap[K, V] {
 	}
 	return &FixedMap[K, V]{
 		Max: maxV,
-		Map: make(map[K]*Node[K, V]),
+		Map: make(map[K]*Node[K, V], maxV),
 	}
 }
 
