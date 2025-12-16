@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # pin@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # pin@v4
       - name: Setup Go environment
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # pin@v5
         with:
@@ -27,7 +27,7 @@ jobs:
       - name: Download linter config
         run: curl -fsS -o .golangci.yml https://raw.githubusercontent.com/fortio/workflows/main/golangci.yml
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # pin@v8
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # pin@v8
         with:
           version: v2.6.1
       - name: Run tests
