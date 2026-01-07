@@ -10,7 +10,7 @@ require (
 	fortio.org/scli v1.19.0
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.29.0
-	grol.io/grol v0.96.3
+	grol.io/grol v0.97.0
 )
 
 // replace grol.io/grol => ../grol
