@@ -51,5 +51,5 @@ golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/text v0.34.0 h1:oL/Qq0Kdaqxa1KbNeMKwQq0reLCCaFtqu2eNuSeNHbk=
 golang.org/x/text v0.34.0/go.mod h1:homfLqTYRFyVYemLBFl5GgL/DWEiH5wcsQ5gSh1yziA=
 golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
-grol.io/grol v0.99.0 h1:BXshrQq1jjK62E7M53ISe1j74JdLvRHoBjILBdk4pUA=
-grol.io/grol v0.99.0/go.mod h1:1NcsFCqxx909EmLkjUfqU0qsiViAglOXrx1y+HNNTqA=
+grol.io/grol v0.99.1 h1:vLW/FKr7gcOhznTz4alA2lKITw1I4IUYmtuO2mpXn7U=
+grol.io/grol v0.99.1/go.mod h1:1NcsFCqxx909EmLkjUfqU0qsiViAglOXrx1y+HNNTqA=
