@@ -1,6 +1,6 @@
 module grol.io/grol-discord-bot
 
-go 1.24.0
+go 1.25.0
 
 require (
 	fortio.org/cli v1.12.3
