@@ -350,7 +350,7 @@ func errorsBlock(errs []string) string {
 	for i, e := range errs {
 		if i >= 2 {
 			n := len(errs) - i
-			resBuf.WriteString(fmt.Sprintf("\n...%d more %s...", n, cli.Plural(n, "error")))
+			fmt.Fprintf(&resBuf, "\n...%d more %s...", n, cli.Plural(n, "error"))
 			break
 		}
 		resBuf.WriteString("\n-\t" + strings.Join(strings.Split(e, "\n"), "\n-\t"))
