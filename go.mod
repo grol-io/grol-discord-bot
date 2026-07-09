@@ -25,7 +25,7 @@ require (
 	github.com/jbuchbinder/gopnm v0.0.0-20220507095634-e31f54490ce0 // indirect
 	github.com/kortschak/goroutine v1.1.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250406160420-959f8f3db0fb // indirect
 	golang.org/x/image v0.44.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
