@@ -101,6 +101,28 @@ func TestEvalInputIgnoreCommandAddsUser(t *testing.T) {
 	}
 }
 
+func TestEvalInputIgnoreCommandRejectsInvalidUserID(t *testing.T) {
+	withIgnoredUsers(t, "")
+	prevAdmin := BotAdmin
+	BotAdmin = "42"
+	t.Cleanup(func() {
+		BotAdmin = prevAdmin
+	})
+	p := &CommandParams{
+		message: &discordgo.Message{
+			Author: &discordgo.User{ID: "42"},
+		},
+	}
+	got := evalInput("ignore not-a-user", p)
+	want := "💡 Usage: `!grol ignore <userid>`"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+	if IgnoredUsersCount() != 0 {
+		t.Fatal("invalid user ids should not be added to the ignore list")
+	}
+}
+
 func TestEvalInputIgnoreCommandWithoutMessageDoesNotPanic(t *testing.T) {
 	withIgnoredUsers(t, "")
 	prevAdmin := BotAdmin

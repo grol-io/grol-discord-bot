@@ -257,7 +257,7 @@ func parseIgnoredUsers(list string) map[string]struct{} {
 	res := make(map[string]struct{})
 	for _, userID := range strings.Split(list, ":") {
 		userID = normalizeUserID(userID)
-		if userID == "" {
+		if !isDiscordUserID(userID) {
 			continue
 		}
 		res[userID] = struct{}{}
@@ -274,6 +274,18 @@ func normalizeUserID(userID string) string {
 	return userID
 }
 
+func isDiscordUserID(userID string) bool {
+	if userID == "" {
+		return false
+	}
+	for _, r := range userID {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func SetIgnoredUsers(list string) {
 	ignoreMu.Lock()
 	ignored = parseIgnoredUsers(list)
@@ -282,7 +294,7 @@ func SetIgnoredUsers(list string) {
 
 func AddIgnoredUser(userID string) bool {
 	userID = normalizeUserID(userID)
-	if userID == "" {
+	if !isDiscordUserID(userID) {
 		return false
 	}
 	ignoreMu.Lock()
@@ -345,7 +357,7 @@ func evalInput(input string, p *CommandParams) string {
 			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
 		}
 		userID := normalizeUserID(rest)
-		if userID == "" {
+		if !isDiscordUserID(userID) {
 			return "💡 Usage: `!grol ignore <userid>`"
 		}
 		if AddIgnoredUser(userID) {
