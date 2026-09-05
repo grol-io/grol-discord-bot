@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"fortio.org/cli"
@@ -22,6 +24,8 @@ var (
 	BotToken string
 	AutoSave bool
 	BotAdmin string
+	ignoreMu sync.RWMutex
+	ignored  map[string]struct{}
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
@@ -85,7 +89,10 @@ func Run(maxHistoryLength int) int {
 	}
 	log.S(log.Info, "Library eval result", log.String("result", res))
 
-	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin)
+	log.Infof(
+		"Bot is now running with AutoSave=%t, BotAdmin=%s, IgnoredUsers=%d - Press CTRL-C or SIGTERM to exit.",
+		AutoSave, BotAdmin, IgnoredUsersCount(),
+	)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	cli.UntilInterrupted()
 	err = session.Close()
@@ -249,10 +256,118 @@ func replConfig() repl.Options {
 	return cfg
 }
 
+func parseIgnoredUsers(list string) map[string]struct{} {
+	res := make(map[string]struct{})
+	for userID := range strings.SplitSeq(list, ":") {
+		userID = normalizeUserID(userID)
+		if !isDiscordUserID(userID) {
+			continue
+		}
+		res[userID] = struct{}{}
+	}
+	return res
+}
+
+func normalizeUserID(userID string) string {
+	userID = strings.TrimSpace(userID)
+	if strings.HasPrefix(userID, "<@") && strings.HasSuffix(userID, ">") {
+		userID = strings.TrimSuffix(strings.TrimPrefix(userID, "<@"), ">")
+		userID = strings.TrimPrefix(userID, "!")
+	}
+	return userID
+}
+
+func isDiscordUserID(userID string) bool {
+	if userID == "" {
+		return false
+	}
+	for _, r := range userID {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func SetIgnoredUsers(list string) {
+	ignoreMu.Lock()
+	ignored = parseIgnoredUsers(list)
+	ignoreMu.Unlock()
+}
+
+func AddIgnoredUser(userID string) bool {
+	userID = normalizeUserID(userID)
+	if !isDiscordUserID(userID) {
+		return false
+	}
+	ignoreMu.Lock()
+	defer ignoreMu.Unlock()
+	if ignored == nil {
+		ignored = make(map[string]struct{})
+	}
+	_, found := ignored[userID]
+	ignored[userID] = struct{}{}
+	return !found
+}
+
+func IgnoredUsersCount() int {
+	ignoreMu.RLock()
+	defer ignoreMu.RUnlock()
+	return len(ignored)
+}
+
+func IsIgnored(userID string) bool {
+	ignoreMu.RLock()
+	defer ignoreMu.RUnlock()
+	_, found := ignored[normalizeUserID(userID)]
+	return found
+}
+
+func IgnoredUsersString() string {
+	ignoreMu.RLock()
+	defer ignoreMu.RUnlock()
+	if len(ignored) == 0 {
+		return ""
+	}
+	users := make([]string, 0, len(ignored))
+	for userID := range ignored {
+		users = append(users, userID)
+	}
+	sort.Strings(users)
+	return strings.Join(users, ":")
+}
+
+func commandUserID(p *CommandParams) string {
+	if p == nil || p.message == nil || p.message.Author == nil {
+		return ""
+	}
+	return p.message.Author.ID
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
 func evalInput(input string, p *CommandParams) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
+	userID := commandUserID(p)
+	if input == "ignore" {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+		}
+		return "💡 Usage: `!grol ignore <userid>`"
+	}
+	if rest, ok := strings.CutPrefix(input, "ignore "); ok {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+		}
+		ignoredUserID := normalizeUserID(rest)
+		if !isDiscordUserID(ignoredUserID) {
+			return "💡 Usage: `!grol ignore <userid>`"
+		}
+		if AddIgnoredUser(ignoredUserID) {
+			return "🙈 Ignoring messages from <@" + ignoredUserID + ">."
+		}
+		return "🙈 Already ignoring messages from <@" + ignoredUserID + ">."
+	}
 	switch input {
 	case "", "help", "-h", "--help", "-help":
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
@@ -278,10 +393,10 @@ func evalInput(input string, p *CommandParams) string {
 		res = "🐞 Please report any issue or suggestion at " +
 			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	case "reset":
-		if !IsAdmin(p.message.Author.ID) {
+		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can reset the bot, please ask <@" + BotAdmin + ">"
 		}
-		log.Critf("Admin %s requested reset", p.message.Author.ID)
+		log.Critf("Admin %s requested reset", userID)
 		scheduleReset(p.session)
 		return "🔄 Resetting bot per <@" + BotAdmin + ">, brb!."
 	default:
@@ -448,6 +563,10 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.author.id is same as bot.author.id then just return
 	*/
 	log.S(log.Debug, "message", log.Any("message", message))
+	if message.Author == nil {
+		log.S(log.Warning, "ignoring message without author", log.Any("message", message))
+		return
+	}
 	if IsThisBot(message.Author.ID) {
 		return
 	}
@@ -459,8 +578,16 @@ func tagToCmd(msg, id string) string {
 }
 
 func handleMessage(session *discordgo.Session, message *discordgo.Message, replyID string) {
+	if message == nil || message.Author == nil {
+		log.S(log.Warning, "ignoring message without author", log.Any("message", message))
+		return
+	}
 	isDM := message.GuildID == ""
 	message.Content = strings.TrimSpace(message.Content)
+	if IsIgnored(message.Author.ID) {
+		log.S(log.Info, "ignoring blocked user", log.Any("userID", message.Author.ID), log.Any("messageID", message.ID))
+		return
+	}
 	if isDM {
 		handleDM(session, message, replyID)
 		return
@@ -532,6 +659,10 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 
 func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
 	log.S(log.Debug, "message update", log.Any("message", message))
+	if message.Author == nil {
+		log.S(log.Warning, "ignoring message update without author", log.Any("message", message))
+		return
+	}
 	if IsThisBot(message.Author.ID) { // don't loop handling our own messages.
 		return
 	}

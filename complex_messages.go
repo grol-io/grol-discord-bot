@@ -37,17 +37,46 @@ func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, ms
 	}
 }
 
+func ignoredInteractionReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
+	resp := &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "\u200b",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}
+	err := s.InteractionRespond(i.Interaction, resp)
+	if err != nil {
+		log.S(log.Warning, "error acknowledging ignored interaction", log.Any("author", userID), log.Any("err", err))
+	}
+}
+
+func interactionUserID(i *discordgo.InteractionCreate) (string, bool) {
+	switch {
+	case i.User != nil:
+		return i.User.ID, true
+	case i.Member != nil && i.Member.User != nil:
+		return i.Member.User.ID, true
+	default:
+		return "", false
+	}
+}
+
 func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log.S(log.Info, "Processing application command interaction", log.Any("interaction", i))
+	userID, ok := interactionUserID(i)
+	if !ok {
+		errorReply(s, i, "", "Could not determine interaction user")
+		return
+	}
+	if IsIgnored(userID) {
+		log.S(log.Info, "ignoring blocked interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
+		ignoredInteractionReply(s, i, userID)
+		return
+	}
 	if i.ApplicationCommandData().Options != nil {
 		slashCmdInteraction(s, i)
 		return
-	}
-	var userID string
-	if i.User == nil {
-		userID = i.Member.User.ID
-	} else {
-		userID = i.User.ID
 	}
 	resolved := i.ApplicationCommandData().Resolved
 	if resolved == nil {
@@ -103,11 +132,15 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 	// Key state of the message ID.
-	var userID string
-	if i.User == nil {
-		userID = i.Member.User.ID
-	} else {
-		userID = i.User.ID
+	userID, ok := interactionUserID(i)
+	if !ok {
+		log.S(log.Warning, "ignoring interaction without user", log.Any("interactionID", i.ID))
+		return
+	}
+	if IsIgnored(userID) {
+		log.S(log.Info, "ignoring blocked component interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
+		ignoredInteractionReply(s, i, userID)
+		return
 	}
 	code := fmt.Sprintf("discord.doInteraction(%q,%q,%s)", i.Message.ID, userID, json)
 	log.Infof("Running code: %s", code)
