@@ -1,13 +1,17 @@
 package main
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
 )
 
+var ignoreTestMu sync.Mutex
+
 func withIgnoredUsers(t *testing.T, list string) {
 	t.Helper()
+	ignoreTestMu.Lock()
 	ignoreMu.RLock()
 	prev := make([]string, 0, len(ignored))
 	for userID := range ignored {
@@ -20,6 +24,7 @@ func withIgnoredUsers(t *testing.T, list string) {
 		for _, userID := range prev {
 			AddIgnoredUser(userID)
 		}
+		ignoreTestMu.Unlock()
 	})
 }
 
