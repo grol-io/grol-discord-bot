@@ -548,6 +548,10 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	if message.author.id is same as bot.author.id then just return
 	*/
 	log.S(log.Debug, "message", log.Any("message", message))
+	if message.Author == nil {
+		log.S(log.Warning, "ignoring message without author", log.Any("message", message))
+		return
+	}
 	if IsThisBot(message.Author.ID) {
 		return
 	}
@@ -559,6 +563,10 @@ func tagToCmd(msg, id string) string {
 }
 
 func handleMessage(session *discordgo.Session, message *discordgo.Message, replyID string) {
+	if message == nil || message.Author == nil {
+		log.S(log.Warning, "ignoring message without author", log.Any("message", message))
+		return
+	}
 	isDM := message.GuildID == ""
 	message.Content = strings.TrimSpace(message.Content)
 	if IsIgnored(message.Author.ID) {
@@ -636,6 +644,10 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 
 func updateMessage(session *discordgo.Session, message *discordgo.MessageUpdate) {
 	log.S(log.Debug, "message update", log.Any("message", message))
+	if message.Author == nil {
+		log.S(log.Warning, "ignoring message update without author", log.Any("message", message))
+		return
+	}
 	if IsThisBot(message.Author.ID) { // don't loop handling our own messages.
 		return
 	}
