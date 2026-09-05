@@ -37,13 +37,23 @@ func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, ms
 	}
 }
 
+func interactionUserID(i *discordgo.InteractionCreate) (string, bool) {
+	switch {
+	case i.User != nil:
+		return i.User.ID, true
+	case i.Member != nil && i.Member.User != nil:
+		return i.Member.User.ID, true
+	default:
+		return "", false
+	}
+}
+
 func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log.S(log.Info, "Processing application command interaction", log.Any("interaction", i))
-	var userID string
-	if i.User == nil {
-		userID = i.Member.User.ID
-	} else {
-		userID = i.User.ID
+	userID, ok := interactionUserID(i)
+	if !ok {
+		errorReply(s, i, "", "Could not determine interaction user")
+		return
 	}
 	if IsIgnored(userID) {
 		log.S(log.Info, "ignoring blocked interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
@@ -107,11 +117,10 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 	// Key state of the message ID.
-	var userID string
-	if i.User == nil {
-		userID = i.Member.User.ID
-	} else {
-		userID = i.User.ID
+	userID, ok := interactionUserID(i)
+	if !ok {
+		log.S(log.Warning, "ignoring interaction without user", log.Any("interactionID", i.ID))
+		return
 	}
 	if IsIgnored(userID) {
 		log.S(log.Info, "ignoring blocked component interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))

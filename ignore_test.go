@@ -100,3 +100,36 @@ func TestEvalInputIgnoreCommandAddsUser(t *testing.T) {
 		t.Fatal("admin ignore command should add the user to the ignore list")
 	}
 }
+
+func TestInteractionUserID(t *testing.T) {
+	t.Run("user", func(t *testing.T) {
+		got, ok := interactionUserID(&discordgo.InteractionCreate{
+			Interaction: &discordgo.Interaction{
+				User: &discordgo.User{ID: "123"},
+			},
+		})
+		if !ok || got != "123" {
+			t.Fatalf("expected direct user id, got %q, %t", got, ok)
+		}
+	})
+	t.Run("member user", func(t *testing.T) {
+		got, ok := interactionUserID(&discordgo.InteractionCreate{
+			Interaction: &discordgo.Interaction{
+				Member: &discordgo.Member{
+					User: &discordgo.User{ID: "456"},
+				},
+			},
+		})
+		if !ok || got != "456" {
+			t.Fatalf("expected member user id, got %q, %t", got, ok)
+		}
+	})
+	t.Run("missing user", func(t *testing.T) {
+		got, ok := interactionUserID(&discordgo.InteractionCreate{
+			Interaction: &discordgo.Interaction{},
+		})
+		if ok || got != "" {
+			t.Fatalf("expected missing user result, got %q, %t", got, ok)
+		}
+	})
+}
