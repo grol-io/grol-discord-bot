@@ -555,12 +555,6 @@ func handleMessage(session *discordgo.Session, message *discordgo.Message, reply
 	message.Content = strings.TrimSpace(message.Content)
 	if IsIgnored(message.Author.ID) {
 		log.S(log.Info, "ignoring blocked user", log.Any("userID", message.Author.ID), log.Any("messageID", message.ID))
-		if replyID != "" {
-			err := session.ChannelMessageDelete(message.ChannelID, replyID)
-			if err != nil {
-				log.S(log.Error, "unable to delete ignored-user reply", log.Any("err", err))
-			}
-		}
 		return
 	}
 	if isDM {
