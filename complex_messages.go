@@ -39,15 +39,19 @@ func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, ms
 
 func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log.S(log.Info, "Processing application command interaction", log.Any("interaction", i))
-	if i.ApplicationCommandData().Options != nil {
-		slashCmdInteraction(s, i)
-		return
-	}
 	var userID string
 	if i.User == nil {
 		userID = i.Member.User.ID
 	} else {
 		userID = i.User.ID
+	}
+	if IsIgnored(userID) {
+		log.S(log.Info, "ignoring blocked interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
+		return
+	}
+	if i.ApplicationCommandData().Options != nil {
+		slashCmdInteraction(s, i)
+		return
 	}
 	resolved := i.ApplicationCommandData().Resolved
 	if resolved == nil {
@@ -108,6 +112,10 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		userID = i.Member.User.ID
 	} else {
 		userID = i.User.ID
+	}
+	if IsIgnored(userID) {
+		log.S(log.Info, "ignoring blocked component interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
+		return
 	}
 	code := fmt.Sprintf("discord.doInteraction(%q,%q,%s)", i.Message.ID, userID, json)
 	log.Infof("Running code: %s", code)

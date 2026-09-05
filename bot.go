@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"fortio.org/cli"
@@ -22,6 +24,8 @@ var (
 	BotToken string
 	AutoSave bool
 	BotAdmin string
+	ignoreMu sync.RWMutex
+	ignored  map[string]struct{}
 	// State for edit to replies.
 	msgSet       *fixedmap.FixedMap[string, string]
 	botStartTime time.Time
@@ -85,7 +89,7 @@ func Run(maxHistoryLength int) int {
 	}
 	log.S(log.Info, "Library eval result", log.String("result", res))
 
-	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin)
+	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s, IgnoredUsers=%d - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin, IgnoredUsersCount())
 	// keep bot running until there is NO os interruption (ctrl + C)
 	cli.UntilInterrupted()
 	err = session.Close()
@@ -249,10 +253,98 @@ func replConfig() repl.Options {
 	return cfg
 }
 
+func parseIgnoredUsers(list string) map[string]struct{} {
+	res := make(map[string]struct{})
+	for _, userID := range strings.Split(list, ":") {
+		userID = normalizeUserID(userID)
+		if userID == "" {
+			continue
+		}
+		res[userID] = struct{}{}
+	}
+	return res
+}
+
+func normalizeUserID(userID string) string {
+	userID = strings.TrimSpace(userID)
+	if strings.HasPrefix(userID, "<@") && strings.HasSuffix(userID, ">") {
+		userID = strings.TrimSuffix(strings.TrimPrefix(userID, "<@"), ">")
+		userID = strings.TrimPrefix(userID, "!")
+	}
+	return userID
+}
+
+func SetIgnoredUsers(list string) {
+	ignoreMu.Lock()
+	ignored = parseIgnoredUsers(list)
+	ignoreMu.Unlock()
+}
+
+func AddIgnoredUser(userID string) bool {
+	userID = normalizeUserID(userID)
+	if userID == "" {
+		return false
+	}
+	ignoreMu.Lock()
+	defer ignoreMu.Unlock()
+	if ignored == nil {
+		ignored = make(map[string]struct{})
+	}
+	_, found := ignored[userID]
+	ignored[userID] = struct{}{}
+	return !found
+}
+
+func IgnoredUsersCount() int {
+	ignoreMu.RLock()
+	defer ignoreMu.RUnlock()
+	return len(ignored)
+}
+
+func IsIgnored(userID string) bool {
+	ignoreMu.RLock()
+	defer ignoreMu.RUnlock()
+	_, found := ignored[normalizeUserID(userID)]
+	return found
+}
+
+func IgnoredUsersString() string {
+	ignoreMu.RLock()
+	defer ignoreMu.RUnlock()
+	if len(ignored) == 0 {
+		return ""
+	}
+	users := make([]string, 0, len(ignored))
+	for userID := range ignored {
+		users = append(users, userID)
+	}
+	sort.Strings(users)
+	return strings.Join(users, ":")
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
 func evalInput(input string, p *CommandParams) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
+	if input == "ignore" {
+		if !IsAdmin(p.message.Author.ID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+		}
+		return "💡 Usage: `!grol ignore <userid>`"
+	}
+	if rest, ok := strings.CutPrefix(input, "ignore "); ok {
+		if !IsAdmin(p.message.Author.ID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+		}
+		userID := normalizeUserID(rest)
+		if userID == "" {
+			return "💡 Usage: `!grol ignore <userid>`"
+		}
+		if AddIgnoredUser(userID) {
+			return "🙈 Ignoring messages from <@" + userID + ">."
+		}
+		return "🙈 Already ignoring messages from <@" + userID + ">."
+	}
 	switch input {
 	case "", "help", "-h", "--help", "-help":
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
@@ -461,6 +553,16 @@ func tagToCmd(msg, id string) string {
 func handleMessage(session *discordgo.Session, message *discordgo.Message, replyID string) {
 	isDM := message.GuildID == ""
 	message.Content = strings.TrimSpace(message.Content)
+	if IsIgnored(message.Author.ID) {
+		log.S(log.Info, "ignoring blocked user", log.Any("userID", message.Author.ID), log.Any("messageID", message.ID))
+		if replyID != "" {
+			err := session.ChannelMessageDelete(message.ChannelID, replyID)
+			if err != nil {
+				log.S(log.Error, "unable to delete ignored-user reply", log.Any("err", err))
+			}
+		}
+		return
+	}
 	if isDM {
 		handleDM(session, message, replyID)
 		return

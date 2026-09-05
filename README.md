@@ -25,6 +25,7 @@ Though really... We're running it
 
 Current default setup allows `save()` and thus `load()` to a single `.gr` file in the CWD.
 Can be disabled setting env var `GROL_DISABLE_AUTOSAVE=1`.
+Ignored users can be configured with `DISCORD_BOT_IGNORE=123:456` and extended at runtime by the bot admin with `!grol ignore <userid>`.
 
 ### Dev bot version
 
