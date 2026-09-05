@@ -37,6 +37,20 @@ func errorReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID, ms
 	}
 }
 
+func ignoredInteractionReply(s *discordgo.Session, i *discordgo.InteractionCreate, userID string) {
+	resp := &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "\u200b",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}
+	err := s.InteractionRespond(i.Interaction, resp)
+	if err != nil {
+		log.S(log.Warning, "error acknowledging ignored interaction", log.Any("author", userID), log.Any("err", err))
+	}
+}
+
 func interactionUserID(i *discordgo.InteractionCreate) (string, bool) {
 	switch {
 	case i.User != nil:
@@ -57,6 +71,7 @@ func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.Int
 	}
 	if IsIgnored(userID) {
 		log.S(log.Info, "ignoring blocked interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
+		ignoredInteractionReply(s, i, userID)
 		return
 	}
 	if i.ApplicationCommandData().Options != nil {
@@ -124,6 +139,7 @@ func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 	if IsIgnored(userID) {
 		log.S(log.Info, "ignoring blocked component interaction user", log.Any("userID", userID), log.Any("interactionID", i.ID))
+		ignoredInteractionReply(s, i, userID)
 		return
 	}
 	code := fmt.Sprintf("discord.doInteraction(%q,%q,%s)", i.Message.ID, userID, json)

@@ -89,7 +89,10 @@ func Run(maxHistoryLength int) int {
 	}
 	log.S(log.Info, "Library eval result", log.String("result", res))
 
-	log.Infof("Bot is now running with AutoSave=%t, BotAdmin=%s, IgnoredUsers=%d - Press CTRL-C or SIGTERM to exit.", AutoSave, BotAdmin, IgnoredUsersCount())
+	log.Infof(
+		"Bot is now running with AutoSave=%t, BotAdmin=%s, IgnoredUsers=%d - Press CTRL-C or SIGTERM to exit.",
+		AutoSave, BotAdmin, IgnoredUsersCount(),
+	)
 	// keep bot running until there is NO os interruption (ctrl + C)
 	cli.UntilInterrupted()
 	err = session.Close()
@@ -255,7 +258,7 @@ func replConfig() repl.Options {
 
 func parseIgnoredUsers(list string) map[string]struct{} {
 	res := make(map[string]struct{})
-	for _, userID := range strings.Split(list, ":") {
+	for userID := range strings.SplitSeq(list, ":") {
 		userID = normalizeUserID(userID)
 		if !isDiscordUserID(userID) {
 			continue
@@ -356,14 +359,14 @@ func evalInput(input string, p *CommandParams) string {
 		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
 		}
-		userID := normalizeUserID(rest)
-		if !isDiscordUserID(userID) {
+		ignoredUserID := normalizeUserID(rest)
+		if !isDiscordUserID(ignoredUserID) {
 			return "💡 Usage: `!grol ignore <userid>`"
 		}
-		if AddIgnoredUser(userID) {
-			return "🙈 Ignoring messages from <@" + userID + ">."
+		if AddIgnoredUser(ignoredUserID) {
+			return "🙈 Ignoring messages from <@" + ignoredUserID + ">."
 		}
-		return "🙈 Already ignoring messages from <@" + userID + ">."
+		return "🙈 Already ignoring messages from <@" + ignoredUserID + ">."
 	}
 	switch input {
 	case "", "help", "-h", "--help", "-help":
