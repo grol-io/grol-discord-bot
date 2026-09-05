@@ -101,6 +101,20 @@ func TestEvalInputIgnoreCommandAddsUser(t *testing.T) {
 	}
 }
 
+func TestEvalInputIgnoreCommandWithoutMessageDoesNotPanic(t *testing.T) {
+	withIgnoredUsers(t, "")
+	prevAdmin := BotAdmin
+	BotAdmin = "42"
+	t.Cleanup(func() {
+		BotAdmin = prevAdmin
+	})
+	got := evalInput("ignore 99", &CommandParams{})
+	want := "⛔️ Only the bot admin can ignore users, please ask <@42>"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
 func TestInteractionUserID(t *testing.T) {
 	t.Run("user", func(t *testing.T) {
 		got, ok := interactionUserID(&discordgo.InteractionCreate{

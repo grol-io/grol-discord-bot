@@ -322,18 +322,26 @@ func IgnoredUsersString() string {
 	return strings.Join(users, ":")
 }
 
+func commandUserID(p *CommandParams) string {
+	if p == nil || p.message == nil || p.message.Author == nil {
+		return ""
+	}
+	return p.message.Author.ID
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
 func evalInput(input string, p *CommandParams) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
+	userID := commandUserID(p)
 	if input == "ignore" {
-		if !IsAdmin(p.message.Author.ID) {
+		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
 		}
 		return "💡 Usage: `!grol ignore <userid>`"
 	}
 	if rest, ok := strings.CutPrefix(input, "ignore "); ok {
-		if !IsAdmin(p.message.Author.ID) {
+		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
 		}
 		userID := normalizeUserID(rest)
@@ -370,10 +378,10 @@ func evalInput(input string, p *CommandParams) string {
 		res = "🐞 Please report any issue or suggestion at " +
 			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	case "reset":
-		if !IsAdmin(p.message.Author.ID) {
+		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can reset the bot, please ask <@" + BotAdmin + ">"
 		}
-		log.Critf("Admin %s requested reset", p.message.Author.ID)
+		log.Critf("Admin %s requested reset", userID)
 		scheduleReset(p.session)
 		return "🔄 Resetting bot per <@" + BotAdmin + ">, brb!."
 	default:
