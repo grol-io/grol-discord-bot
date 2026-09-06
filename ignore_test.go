@@ -57,6 +57,22 @@ func TestAddIgnoredUser(t *testing.T) {
 	}
 }
 
+func TestRemoveIgnoredUser(t *testing.T) {
+	withIgnoredUsers(t, "123:<@!789>")
+	if !RemoveIgnoredUser("<@789>") {
+		t.Fatal("expected existing user to be removed")
+	}
+	if IsIgnored("789") {
+		t.Fatal("expected normalized user id to be removed from ignore list")
+	}
+	if RemoveIgnoredUser("789") {
+		t.Fatal("expected removing an already-removed user to report missing user")
+	}
+	if !IsIgnored("123") {
+		t.Fatal("expected other ignored users to remain ignored")
+	}
+}
+
 func TestEvalInputIgnoreCommandRequiresAdmin(t *testing.T) {
 	withIgnoredUsers(t, "")
 	prevAdmin := BotAdmin
@@ -98,6 +114,88 @@ func TestEvalInputIgnoreCommandAddsUser(t *testing.T) {
 	}
 	if !IsIgnored("99") {
 		t.Fatal("admin ignore command should add the user to the ignore list")
+	}
+}
+
+func TestEvalInputUnignoreCommandRequiresAdmin(t *testing.T) {
+	withIgnoredUsers(t, "99")
+	prevAdmin := BotAdmin
+	BotAdmin = "42"
+	t.Cleanup(func() {
+		BotAdmin = prevAdmin
+	})
+	p := &CommandParams{
+		message: &discordgo.Message{
+			Author: &discordgo.User{ID: "7"},
+		},
+	}
+	got := evalInput("unignore 99", p)
+	want := "⛔️ Only the bot admin can ignore users, please ask <@42>"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+	if !IsIgnored("99") {
+		t.Fatal("non-admin should not be able to unignore users")
+	}
+}
+
+func TestEvalInputUnignoreCommandShowsUsage(t *testing.T) {
+	withIgnoredUsers(t, "99")
+	prevAdmin := BotAdmin
+	BotAdmin = "42"
+	t.Cleanup(func() {
+		BotAdmin = prevAdmin
+	})
+	p := &CommandParams{
+		message: &discordgo.Message{
+			Author: &discordgo.User{ID: "42"},
+		},
+	}
+	got := evalInput("unignore", p)
+	want := "💡 Usage: `!grol unignore <userid>`"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
+func TestEvalInputUnignoreCommandRemovesUser(t *testing.T) {
+	withIgnoredUsers(t, "99")
+	prevAdmin := BotAdmin
+	BotAdmin = "42"
+	t.Cleanup(func() {
+		BotAdmin = prevAdmin
+	})
+	p := &CommandParams{
+		message: &discordgo.Message{
+			Author: &discordgo.User{ID: "42"},
+		},
+	}
+	got := evalInput("unignore <@!99>", p)
+	want := "🙉 No longer ignoring messages from <@99>."
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+	if IsIgnored("99") {
+		t.Fatal("admin unignore command should remove the user from the ignore list")
+	}
+}
+
+func TestEvalInputUnignoreCommandRejectsInvalidUserID(t *testing.T) {
+	withIgnoredUsers(t, "")
+	prevAdmin := BotAdmin
+	BotAdmin = "42"
+	t.Cleanup(func() {
+		BotAdmin = prevAdmin
+	})
+	p := &CommandParams{
+		message: &discordgo.Message{
+			Author: &discordgo.User{ID: "42"},
+		},
+	}
+	got := evalInput("unignore not-a-user", p)
+	want := "💡 Usage: `!grol unignore <userid>`"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
 	}
 }
 

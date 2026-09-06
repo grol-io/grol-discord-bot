@@ -310,6 +310,18 @@ func AddIgnoredUser(userID string) bool {
 	return !found
 }
 
+func RemoveIgnoredUser(userID string) bool {
+	userID = normalizeUserID(userID)
+	if !isDiscordUserID(userID) {
+		return false
+	}
+	ignoreMu.Lock()
+	defer ignoreMu.Unlock()
+	_, found := ignored[userID]
+	delete(ignored, userID)
+	return found
+}
+
 func IgnoredUsersCount() int {
 	ignoreMu.RLock()
 	defer ignoreMu.RUnlock()
@@ -367,6 +379,25 @@ func evalInput(input string, p *CommandParams) string {
 			return "🙈 Ignoring messages from <@" + ignoredUserID + ">."
 		}
 		return "🙈 Already ignoring messages from <@" + ignoredUserID + ">."
+	}
+	if input == "unignore" {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+		}
+		return "💡 Usage: `!grol unignore <userid>`"
+	}
+	if rest, ok := strings.CutPrefix(input, "unignore "); ok {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+		}
+		ignoredUserID := normalizeUserID(rest)
+		if !isDiscordUserID(ignoredUserID) {
+			return "💡 Usage: `!grol unignore <userid>`"
+		}
+		if RemoveIgnoredUser(ignoredUserID) {
+			return "🙉 No longer ignoring messages from <@" + ignoredUserID + ">."
+		}
+		return "🙉 Was not ignoring messages from <@" + ignoredUserID + ">."
 	}
 	switch input {
 	case "", "help", "-h", "--help", "-help":
