@@ -310,6 +310,18 @@ func AddIgnoredUser(userID string) bool {
 	return !found
 }
 
+func RemoveIgnoredUser(userID string) bool {
+	userID = normalizeUserID(userID)
+	if !isDiscordUserID(userID) {
+		return false
+	}
+	ignoreMu.Lock()
+	defer ignoreMu.Unlock()
+	_, found := ignored[userID]
+	delete(ignored, userID)
+	return found
+}
+
 func IgnoredUsersCount() int {
 	ignoreMu.RLock()
 	defer ignoreMu.RUnlock()
@@ -344,29 +356,55 @@ func commandUserID(p *CommandParams) string {
 	return p.message.Author.ID
 }
 
+func handleIgnoreCommand(input, userID string) (string, bool) {
+	if input == "ignore" {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">", true
+		}
+		return "💡 Usage: `!grol ignore <userid>`", true
+	}
+	if rest, ok := strings.CutPrefix(input, "ignore "); ok {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">", true
+		}
+		ignoredUserID := normalizeUserID(rest)
+		if !isDiscordUserID(ignoredUserID) {
+			return "💡 Usage: `!grol ignore <userid>`", true
+		}
+		if AddIgnoredUser(ignoredUserID) {
+			return "🙈 Ignoring messages from <@" + ignoredUserID + ">.", true
+		}
+		return "🙈 Already ignoring messages from <@" + ignoredUserID + ">.", true
+	}
+	if input == "unignore" {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can unignore users, please ask <@" + BotAdmin + ">", true
+		}
+		return "💡 Usage: `!grol unignore <userid>`", true
+	}
+	if rest, ok := strings.CutPrefix(input, "unignore "); ok {
+		if !IsAdmin(userID) {
+			return "⛔️ Only the bot admin can unignore users, please ask <@" + BotAdmin + ">", true
+		}
+		ignoredUserID := normalizeUserID(rest)
+		if !isDiscordUserID(ignoredUserID) {
+			return "💡 Usage: `!grol unignore <userid>`", true
+		}
+		if RemoveIgnoredUser(ignoredUserID) {
+			return "🙉 No longer ignoring messages from <@" + ignoredUserID + ">.", true
+		}
+		return "🙉 Was not ignoring messages from <@" + ignoredUserID + ">.", true
+	}
+	return "", false
+}
+
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
 func evalInput(input string, p *CommandParams) string {
 	var res string
 	input = strings.TrimSpace(input) // we do it again so "   !grol    help" works
 	userID := commandUserID(p)
-	if input == "ignore" {
-		if !IsAdmin(userID) {
-			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
-		}
-		return "💡 Usage: `!grol ignore <userid>`"
-	}
-	if rest, ok := strings.CutPrefix(input, "ignore "); ok {
-		if !IsAdmin(userID) {
-			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
-		}
-		ignoredUserID := normalizeUserID(rest)
-		if !isDiscordUserID(ignoredUserID) {
-			return "💡 Usage: `!grol ignore <userid>`"
-		}
-		if AddIgnoredUser(ignoredUserID) {
-			return "🙈 Ignoring messages from <@" + ignoredUserID + ">."
-		}
-		return "🙈 Already ignoring messages from <@" + ignoredUserID + ">."
+	if out, handled := handleIgnoreCommand(input, userID); handled {
+		return out
 	}
 	switch input {
 	case "", "help", "-h", "--help", "-help":
