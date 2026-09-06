@@ -130,7 +130,7 @@ func TestEvalInputUnignoreCommandRequiresAdmin(t *testing.T) {
 		},
 	}
 	got := evalInput("unignore 99", p)
-	want := "⛔️ Only the bot admin can ignore users, please ask <@42>"
+	want := "⛔️ Only the bot admin can unignore users, please ask <@42>"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}

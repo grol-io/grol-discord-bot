@@ -382,13 +382,13 @@ func evalInput(input string, p *CommandParams) string {
 	}
 	if input == "unignore" {
 		if !IsAdmin(userID) {
-			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+			return "⛔️ Only the bot admin can unignore users, please ask <@" + BotAdmin + ">"
 		}
 		return "💡 Usage: `!grol unignore <userid>`"
 	}
 	if rest, ok := strings.CutPrefix(input, "unignore "); ok {
 		if !IsAdmin(userID) {
-			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">"
+			return "⛔️ Only the bot admin can unignore users, please ask <@" + BotAdmin + ">"
 		}
 		ignoredUserID := normalizeUserID(rest)
 		if !isDiscordUserID(ignoredUserID) {
