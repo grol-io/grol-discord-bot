@@ -92,7 +92,11 @@ func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.Int
 	for _, v := range msgs {
 		msg = v
 	}
-	if !IsThisBot(msg.Author.ID) {
+	if i.ApplicationCommandData().Name == runCmdName {
+		runInteraction(s, i, userID, msg)
+		return
+	}
+	if msg.Author == nil || !IsThisBot(msg.Author.ID) {
 		errorReply(s, i, userID, "Expected message to be from the bot")
 		return
 	}
@@ -111,6 +115,45 @@ func processApplicationCommandInteraction(s *discordgo.Session, i *discordgo.Int
 	err = s.InteractionRespond(i.Interaction, resp)
 	if err != nil {
 		log.Errf("Error responding to interaction: %v", err)
+	}
+}
+
+// runInteraction evaluates the grol code of the target message of the "grol: run" context command.
+func runInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, userID string, target *discordgo.Message) {
+	if strings.TrimSpace(target.Content) == "" {
+		errorReply(s, i, userID, "No content in message to run")
+		return
+	}
+	// Defer as evaluation can take up to max-duration (longer than the interaction 3s deadline).
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	})
+	if err != nil {
+		log.Errf("Error deferring run interaction: %v", err)
+		return
+	}
+	// Copy of the target message but with the invoking user as author (for admin commands checks).
+	msg := *target
+	msg.Author = &discordgo.User{ID: userID}
+	msg.ChannelID = i.ChannelID
+	msg.GuildID = i.GuildID
+	p := &CommandParams{
+		session:   s,
+		message:   &msg,
+		channelID: i.ChannelID,
+		untracked: true,
+	}
+	setFormatMode(&msg, p)
+	log.S(log.Info, "command-run", log.Any("user", userID), log.Any("target", target.ID), log.Any("content", msg.Content))
+	res := TruncateMessage("response", "run-response", evalInput(msg.Content, p))
+	_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Content: &res,
+		AllowedMentions: &discordgo.MessageAllowedMentions{
+			Parse: []discordgo.AllowedMentionType{},
+		},
+	})
+	if err != nil {
+		log.Errf("Error responding to run interaction: %v", err)
 	}
 }
 
@@ -179,6 +222,8 @@ type MessageState struct {
 	Session          *discordgo.Session
 	ChannelID        string
 	TriggerMessageID string
+	// Don't track (nor check) sent messages in msgSet (e.g. "grol: run" context command).
+	Untracked bool
 	// for interaction responses
 	Interaction *discordgo.Interaction
 	ImageMap    extensions.ImageMap
@@ -298,7 +343,7 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 			if !ok {
 				log.Fatalf("Invalid client data type: %T", cdata)
 			}
-			if _, found := msgSet.Get(msgContext.TriggerMessageID); found {
+			if _, found := msgSet.Get(msgContext.TriggerMessageID); found && !msgContext.Untracked {
 				return object.Errorf("Message already sent")
 			}
 			log.LogVf("ChannelMessageSendComplex Message state %+v", msgContext)
@@ -325,7 +370,9 @@ func ChannelMessageSendComplexFunction(st *MessageState) (string, object.Extensi
 				log.Errf("Error sending message: %v", err)
 				return object.Errorf("Error sending message: %v", err)
 			}
-			updateMap(msgContext.TriggerMessageID, m.ID)
+			if !msgContext.Untracked {
+				updateMap(msgContext.TriggerMessageID, m.ID)
+			}
 			return object.String{Value: m.ID}
 		},
 	}
