@@ -637,13 +637,24 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 
 // tagToCmd removes mentions of the bot (`<@id>` or `<@!id>`, anywhere in the message)
 // and makes the result start with the !grol prefix so @grol works exactly like !grol.
+// Without code blocks, only the text after the (first) mention is kept, so
+// "some text @grol version" is the same as "@grol version".
 // Messages without a mention of the bot are returned unchanged.
 func tagToCmd(msg, id string) string {
-	stripped := strings.ReplaceAll(msg, "<@"+id+">", "")
-	stripped = strings.ReplaceAll(stripped, "<@!"+id+">", "")
-	if stripped == msg {
+	tag, tagAlt := "<@"+id+">", "<@!"+id+">"
+	idx, tagLen := strings.Index(msg, tag), len(tag)
+	if idxAlt := strings.Index(msg, tagAlt); idxAlt != -1 && (idx == -1 || idxAlt < idx) {
+		idx, tagLen = idxAlt, len(tagAlt)
+	}
+	if idx == -1 {
 		return msg
 	}
+	stripped := msg
+	if !strings.Contains(msg, "```") {
+		stripped = msg[idx+tagLen:]
+	}
+	stripped = strings.ReplaceAll(stripped, tag, "")
+	stripped = strings.ReplaceAll(stripped, tagAlt, "")
 	stripped = strings.TrimSpace(stripped)
 	if strings.HasPrefix(stripped, grolPrefix) {
 		return stripped
