@@ -42,6 +42,12 @@ Grol dev
 
 https://discord.com/oauth2/authorize?client_id=1273320816066560041
 
+Run locally as grol-dev (autosave off by default, `GROL_DISABLE_AUTOSAVE=0` to enable):
+
+```sh
+GROL_DEV_TOKEN=... DISCORD_BOT_ADMIN=youruserid make dev
+```
+
 #### To bump grol language version
 
 Run dependabot
