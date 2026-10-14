@@ -18,6 +18,10 @@ func TestTagToCmd(t *testing.T) {
 		{"<@42> !grol -c 1+1", "!grol -c 1+1"},
 		{"please run this <@42>\n```go\n1+1\n```", "!grol please run this \n```go\n1+1\n```"},
 		{"```1+1``` <@42>", "!grol ```1+1```"},
+		{"testing something <@42> version", "!grol version"},
+		{"text <@!42> 1+1 <@42>", "!grol 1+1"},
+		{"<@42>uptime", "!grol uptime"},
+		{"1+1 <@42>", "!grol "},
 		{"no mention 1+1", "no mention 1+1"},
 		{"<@43> other user", "<@43> other user"},
 	}
