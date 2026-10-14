@@ -32,7 +32,15 @@ var (
 	selfID       string // This bot's user ID.
 )
 
-const Unknown = "unknown"
+const (
+	Unknown       = "unknown"
+	deleteCmdName = "grol: delete this"
+	runCmdName    = "grol: run"
+	helpCmd       = "help"
+	versionCmd    = "version"
+	sourceCmd     = "source"
+	bugCmd        = "bug"
+)
 
 func Run(maxHistoryLength int) int {
 	botStartTime = time.Now()
@@ -82,7 +90,9 @@ func Run(maxHistoryLength int) int {
 	}
 	opts.AutoSave = true // force saving the library to compact form even if autosave is off for user messages.
 	grolMutex.Lock()
-	res, errs, _ := repl.EvalStringWithOption(context.Background(), opts, libraryCode)
+	// botMention is used by the library (e.g. blackjack messages) to refer to this bot.
+	code := fmt.Sprintf("botMention=%q\n%s", botMention(), libraryCode)
+	res, errs, _ := repl.EvalStringWithOption(context.Background(), opts, code)
 	grolMutex.Unlock()
 	if len(errs) > 0 {
 		log.S(log.Critical, "Errors in library eval", log.Any("errors", errs))
@@ -357,11 +367,12 @@ func commandUserID(p *CommandParams) string {
 }
 
 func handleIgnoreCommand(input, userID string) (string, bool) {
+	bot := botMention()
 	if input == "ignore" {
 		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can ignore users, please ask <@" + BotAdmin + ">", true
 		}
-		return "💡 Usage: `!grol ignore <userid>`", true
+		return "💡 Usage: " + bot + " `ignore <userid>`", true
 	}
 	if rest, ok := strings.CutPrefix(input, "ignore "); ok {
 		if !IsAdmin(userID) {
@@ -369,7 +380,7 @@ func handleIgnoreCommand(input, userID string) (string, bool) {
 		}
 		ignoredUserID := normalizeUserID(rest)
 		if !isDiscordUserID(ignoredUserID) {
-			return "💡 Usage: `!grol ignore <userid>`", true
+			return "💡 Usage: " + bot + " `ignore <userid>`", true
 		}
 		if AddIgnoredUser(ignoredUserID) {
 			return "🙈 Ignoring messages from <@" + ignoredUserID + ">.", true
@@ -380,7 +391,7 @@ func handleIgnoreCommand(input, userID string) (string, bool) {
 		if !IsAdmin(userID) {
 			return "⛔️ Only the bot admin can unignore users, please ask <@" + BotAdmin + ">", true
 		}
-		return "💡 Usage: `!grol unignore <userid>`", true
+		return "💡 Usage: " + bot + " `unignore <userid>`", true
 	}
 	if rest, ok := strings.CutPrefix(input, "unignore "); ok {
 		if !IsAdmin(userID) {
@@ -388,7 +399,7 @@ func handleIgnoreCommand(input, userID string) (string, bool) {
 		}
 		ignoredUserID := normalizeUserID(rest)
 		if !isDiscordUserID(ignoredUserID) {
-			return "💡 Usage: `!grol unignore <userid>`", true
+			return "💡 Usage: " + bot + " `unignore <userid>`", true
 		}
 		if RemoveIgnoredUser(ignoredUserID) {
 			return "🙉 No longer ignoring messages from <@" + ignoredUserID + ">.", true
@@ -396,6 +407,14 @@ func handleIgnoreCommand(input, userID string) (string, bool) {
 		return "🙉 Was not ignoring messages from <@" + ignoredUserID + ">.", true
 	}
 	return "", false
+}
+
+// botMention returns the mention of this bot (renders as @grol or @grol-dev etc).
+func botMention() string {
+	if selfID == "" {
+		return "@grol"
+	}
+	return "<@" + selfID + ">"
 }
 
 // TODO: switch to an option/config object and maybe an enum as verbatim and compact and format are all exclusive.
@@ -407,27 +426,29 @@ func evalInput(input string, p *CommandParams) string {
 		return out
 	}
 	switch input {
-	case "", "help", "-h", "--help", "-help":
+	case "", helpCmd, "-h", "--help", "-help":
+		bot := botMention()
 		res = "💡 Grol bot help: grol bot evaluates [grol](<https://grol.io>) language fragments, as simple as expressions like `1+1`" +
 			" and as complex as defining closures, using map, arrays, etc... the syntax is similar to go (without needing " +
 			"`:=`, plain `=` is enough). Use `info` to see all functions, keywords, etc..." +
 			" Try `TicTacToe()` or `Butterfly()` or `Blackjack()` for more advanced examples that include grol" +
 			" handling discord interactions and complex messages.\n\n" +
-			"Either in DM or @grol or with `!grol` prefix (or `!grol -f` for also showing formatted code, `-c` in compact mode," +
-			" `-d` debug expressions)" +
-			" in a channel, you can type any grol code and the bot will evaluate it (only code blocks if there are any).\n" +
+			"Mention " + bot + " (or `!grol`) in a channel, or DM me, followed by any grol code and I will evaluate it" +
+			" (only code blocks if there are any). Add `-f` for also showing formatted code, `-c` for compact mode," +
+			" `-d` for debug expressions, e.g. " + bot + " `-f 1+1`.\n" +
 			"Tip: _You can **edit** your messages and I will re-run and edit mine (less floody that way). Thank you!_\n\n" +
-			"Also supported `!grol version`, `!grol source`, `!grol buildinfo`, `!grol bug`.\n" +
-			"You can also try the /grol command, answers will be visible only to you!"
-	case "source":
+			"Also supported " + bot + " `version`, `source`, `buildinfo`, `bug`.\n" +
+			"You can also try the /grol command, answers will be visible only to you!\n" +
+			"Or right click any message with grol code and pick _Apps > grol: run_ to evaluate it."
+	case sourceCmd:
 		res = "📄 [github.com/grol-io/grol-discord-bot](<https://github.com/grol-io/grol-discord-bot>)" +
 			" and [grol-io](<https://grol.io>)"
-	case "uptime", "version", "--version", "-version":
+	case "uptime", versionCmd, "--version", "-version":
 		res = "📦 Grol bot version: " + cli.ShortVersion + ", `grol` language version " + growlVersion +
 			" ⏰ Uptime: " + UptimeString(botStartTime)
 	case "buildinfo":
 		res = "📦ℹ️```" + cli.FullVersion + "```"
-	case "bug":
+	case bugCmd:
 		res = "🐞 Please report any issue or suggestion at " +
 			"[github.com/grol-io/grol-discord-bot/issues](<https://github.com/grol-io/grol-discord-bot/issues>)"
 	case "reset":
@@ -454,6 +475,7 @@ func evalInput(input string, p *CommandParams) string {
 				Session:          p.session,
 				ChannelID:        p.channelID,
 				TriggerMessageID: p.message.ID,
+				Untracked:        p.untracked,
 				ImageMap:         state.Extensions["image.new"].ClientData.(extensions.ImageMap),
 			}
 			name, fn := ChannelMessageSendComplexFunction(&st)
@@ -468,12 +490,12 @@ func evalInput(input string, p *CommandParams) string {
 		evalres, errs, formatted := repl.EvalStringWithOption(context.Background(), cfg, input)
 		grolMutex.Unlock()
 		if (p.formatMode || p.compactMode || p.debugParenMode) && formatted != "" {
-			res = formatModeStr
+			res = botMention() + " -f"
 			if p.compactMode {
-				res = compactModeStr
+				res = botMention() + " -c"
 			}
 			if p.debugParenMode {
-				res = debugParenStr
+				res = botMention() + " -d"
 			}
 			res += "\n```go\n" + formatted + "``` produces: "
 		}
@@ -524,6 +546,8 @@ type CommandParams struct {
 	replyID string
 	// Formatting options. useReply selects if we should use reply (in channel) or send (DMs).
 	formatMode, compactMode, debugParenMode, verbatimMode, useReply, hasErrors bool
+	// Not tracked in msgSet for edits (e.g. "grol: run" context command).
+	untracked bool
 }
 
 func TruncateMessage(msg, info, res string) string {
@@ -611,8 +635,20 @@ func newMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
 	handleMessage(session, message.Message, "")
 }
 
+// tagToCmd removes mentions of the bot (`<@id>` or `<@!id>`, anywhere in the message)
+// and makes the result start with the !grol prefix so @grol works exactly like !grol.
+// Messages without a mention of the bot are returned unchanged.
 func tagToCmd(msg, id string) string {
-	return strings.ReplaceAll(msg, "<@"+id+">", "!grol")
+	stripped := strings.ReplaceAll(msg, "<@"+id+">", "")
+	stripped = strings.ReplaceAll(stripped, "<@!"+id+">", "")
+	if stripped == msg {
+		return msg
+	}
+	stripped = strings.TrimSpace(stripped)
+	if strings.HasPrefix(stripped, grolPrefix) {
+		return stripped
+	}
+	return grolPrefix + " " + stripped
 }
 
 func handleMessage(session *discordgo.Session, message *discordgo.Message, replyID string) {
@@ -742,19 +778,19 @@ func registerCommands(session *discordgo.Session) {
 				Required:    true,
 				Choices: []*discordgo.ApplicationCommandOptionChoice{
 					{
-						Name:  "help",
+						Name:  helpCmd,
 						Value: "help",
 					},
 					{
-						Name:  "version",
+						Name:  versionCmd,
 						Value: "version",
 					},
 					{
-						Name:  "source",
+						Name:  sourceCmd,
 						Value: "source",
 					},
 					{
-						Name:  "bug",
+						Name:  bugCmd,
 						Value: "bug",
 					},
 				},
@@ -765,13 +801,15 @@ func registerCommands(session *discordgo.Session) {
 	if err != nil {
 		log.Fatalf("Cannot create slash command: %v", err)
 	}
-	command = &discordgo.ApplicationCommand{
-		Name: "grol: delete this",
-		Type: discordgo.MessageApplicationCommand,
-	}
-	_, err = session.ApplicationCommandCreate(selfID, "", command)
-	if err != nil {
-		log.Fatalf("Cannot create chat command: %v", err)
+	for _, name := range []string{deleteCmdName, runCmdName} {
+		command = &discordgo.ApplicationCommand{
+			Name: name,
+			Type: discordgo.MessageApplicationCommand,
+		}
+		_, err = session.ApplicationCommandCreate(selfID, "", command)
+		if err != nil {
+			log.Fatalf("Cannot create chat command %q: %v", name, err)
+		}
 	}
 }
 

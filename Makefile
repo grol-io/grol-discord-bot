@@ -6,7 +6,14 @@ test:
 lint: .golangci.yml
 	CGO_ENABLED=0 golangci-lint run
 
+# Run locally against the grol-dev bot: GROL_DEV_TOKEN=... [DISCORD_BOT_ADMIN=youruserid] make dev
+# (token can also be in .groldevtoken). State is saved in .gr like in prod (needed for games).
+GROL_DEV_TOKEN ?= $(shell cat .groldevtoken 2>/dev/null)
+dev:
+	@test -n "$(GROL_DEV_TOKEN)" || (echo "GROL_DEV_TOKEN must be set (or in .groldevtoken) to the grol-dev bot token"; exit 1)
+	@DISCORD_BOT_TOKEN=$(GROL_DEV_TOKEN) GOMEMLIMIT=1GiB go run .
+
 .golangci.yml: Makefile
 	curl -fsS -o .golangci.yml https://raw.githubusercontent.com/fortio/workflows/main/golangci.yml
 
-.PHONY: all lint test
+.PHONY: all lint test dev

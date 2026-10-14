@@ -493,7 +493,7 @@ blackjack = {
 			InteractionRespond({
 				"type": discord.interaction.update_message,
 				"data": {
-					"content": sprintf("%s %d rounds played, had a maximum of $%d, now lost, use `!grol Blackjack()` to start a new game", tag, state.rounds_played, state.highest_balance),
+					"content": sprintf("%s %d rounds played, had a maximum of $%d, now lost, use %s `Blackjack()` to start a new game", tag, state.rounds_played, state.highest_balance, botMention),
 					"components": []
 				}
 			})
@@ -530,7 +530,7 @@ blackjack = {
 					"type":  discord.interaction.message_with_source,
 					"data": {
 						"content": tag + " This action is no longer valid - the game has expired. " +
-						"use `!grol Blackjack()` to start a new game.",
+						"use " + botMention + " `Blackjack()` to start a new game.",
 						"flags": 64 // Ephemeral flag
 					}
 				})

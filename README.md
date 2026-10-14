@@ -25,7 +25,7 @@ Though really... We're running it
 
 Current default setup allows `save()` and thus `load()` to a single `.gr` file in the CWD.
 Can be disabled setting env var `GROL_DISABLE_AUTOSAVE=1`.
-Ignored users can be configured with `DISCORD_BOT_IGNORE=123:456` and managed at runtime by the bot admin with `!grol ignore <userid>` and `!grol unignore <userid>`. Those users are ignored anywhere they try to use the bot, including DMs and interactions.
+Ignored users can be configured with `DISCORD_BOT_IGNORE=123:456` and managed at runtime by the bot admin with `@grol ignore <userid>` and `@grol unignore <userid>`. Those users are ignored anywhere they try to use the bot, including DMs and interactions.
 
 ### Dev bot version
 
@@ -41,6 +41,12 @@ Now grol-dev vs grol
 Grol dev
 
 https://discord.com/oauth2/authorize?client_id=1273320816066560041
+
+Run locally as grol-dev (token from `GROL_DEV_TOKEN` or `.groldevtoken`, state saved in `.gr`):
+
+```sh
+GROL_DEV_TOKEN=... DISCORD_BOT_ADMIN=youruserid make dev
+```
 
 #### To bump grol language version
 

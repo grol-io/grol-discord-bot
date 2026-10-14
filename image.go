@@ -41,7 +41,9 @@ func SendImageFunction(st *MessageState) (string, object.Extension) {
 				log.Errf("Error sending message: %v", err)
 				return object.Errorf("Error sending message: %v", err)
 			}
-			updateMap(msgContext.TriggerMessageID, response.ID)
+			if !msgContext.Untracked {
+				updateMap(msgContext.TriggerMessageID, response.ID)
+			}
 			return object.String{Value: response.ID}
 		},
 	}
