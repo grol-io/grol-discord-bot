@@ -152,7 +152,7 @@ func TestEvalInputUnignoreCommandShowsUsage(t *testing.T) {
 		},
 	}
 	got := evalInput("unignore", p)
-	want := "💡 Usage: `!grol unignore <userid>`"
+	want := "💡 Usage: @grol `unignore <userid>`"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
@@ -193,7 +193,7 @@ func TestEvalInputUnignoreCommandRejectsInvalidUserID(t *testing.T) {
 		},
 	}
 	got := evalInput("unignore not-a-user", p)
-	want := "💡 Usage: `!grol unignore <userid>`"
+	want := "💡 Usage: @grol `unignore <userid>`"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
@@ -212,7 +212,7 @@ func TestEvalInputIgnoreCommandRejectsInvalidUserID(t *testing.T) {
 		},
 	}
 	got := evalInput("ignore not-a-user", p)
-	want := "💡 Usage: `!grol ignore <userid>`"
+	want := "💡 Usage: @grol `ignore <userid>`"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
