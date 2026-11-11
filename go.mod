@@ -7,7 +7,7 @@ require (
 	fortio.org/duration v1.0.4
 	fortio.org/log v1.18.3
 	fortio.org/safecast v1.2.0
-	fortio.org/scli v1.19.0
+	fortio.org/scli v1.20.0
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.29.0
 	grol.io/grol v0.102.1
@@ -28,7 +28,7 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20261011195143-3b414e3e8284 // indirect
 	golang.org/x/image v0.47.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )
