@@ -7,7 +7,7 @@ require (
 	fortio.org/duration v1.0.4
 	fortio.org/log v1.18.3
 	fortio.org/safecast v1.2.0
-	fortio.org/scli v1.20.0
+	fortio.org/scli v1.21.0
 	fortio.org/version v1.0.4
 	github.com/bwmarrin/discordgo v0.29.0
 	grol.io/grol v0.102.1
